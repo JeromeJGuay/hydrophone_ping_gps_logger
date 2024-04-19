@@ -86,7 +86,7 @@ class PingLoggerController:  # Fixme change name
                 break
             time.sleep(self.ping_run_parameters.ping_interval)
 
-    def cancel_ping_run(self):
+    def stop_ping_run(self):
         self.is_running = False
         if self.ping_run_thread:
             self.ping_run_thread.join()
