@@ -1,4 +1,3 @@
-import time
 import datetime
 import logging
 import threading
@@ -6,25 +5,13 @@ import threading
 from pathlib import Path
 from dataclasses import dataclass
 
-import wmi
-
-from garmin_client import Garmin19xHvsClient
-from transponder_client import TransponderClient
+from hydrophone_ping_gps_logger.common import BaseClient
+from transponder import TransponderClient
 
 GARMIN_19XHVS_SAMPLING_RATE = 1/20
 
 GARMIN_19XHVS_DEVICE_NAME = ""
 TRANSPONDER_DEVICE_NAME = ""
-
-
-def scan_usb_devices():
-    """Todo test"""
-    usb_devices = {}
-    for d in wmi.WMI().Win32_PhysicalMedia():
-        _name = d.name
-        if _name:
-            usb_devices[_name] = d.path
-    return usb_devices
 
 
 @dataclass
@@ -47,7 +34,7 @@ class Controller:
         self.start_delay_seconds: int = None
         ###
 
-        self.garmin_19x_hvs_client: Garmin19xHvsClient = None
+        self.garmin_19x_hvs_client: BaseClient = None
         self.garmin_19x_hvs_thread: threading.Thread = None
         self.is_pinging = False # FIXME CHANGE NAME
 
@@ -84,8 +71,9 @@ class Controller:
             #    Maybe not.
             logging.log("Garming 19x hvs found in USB devices")
 
-            self.garmin_19x_hvs_client = Garmin19xHvsClient(
+            self.garmin_19x_hvs_client = BaseClient(
                 port=_usb_devices[GARMIN_19XHVS_DEVICE_NAME],
+                name="Garmin 19x Hvs",
                 sampling_interval=GARMIN_19XHVS_SAMPLING_RATE
             )
         else:
@@ -118,7 +106,7 @@ class Controller:
             self.ping_thread = threading.Thread("ping_thread", self._run, daemon=True)
 
 
-    def _run(self):
+    #def _run(self):
 
 
 
