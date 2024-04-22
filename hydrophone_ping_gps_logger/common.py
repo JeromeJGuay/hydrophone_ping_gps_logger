@@ -1,18 +1,6 @@
 import logging
 import serial
 
-from dataclasses import dataclass
-
-@dataclass
-class NmeaData:
-    date: str
-    time: str
-    latitude: str
-    longitude: str
-
-    def __str__(self):
-        return f'{self.date}, {self.time}, {self.latitude}, {self.longitude}'
-
 
 class BaseClient:
     """

@@ -4,13 +4,25 @@ Only looks for RMC nmea strings.
 import time
 import logging
 import threading
+from dataclasses import dataclass
 
 import pynmea2
 
-from hydrophone_ping_gps_logger.common import BaseClient, NmeaData
-
+from hydrophone_ping_gps_logger.common import BaseClient
 
 GPS_REFRESH_RATE = 0.001
+
+
+@dataclass
+class NmeaData:
+    date: str
+    time: str
+    latitude: str
+    longitude: str
+
+    def __str__(self):
+        return f'{self.date}, {self.time}, {self.latitude}, {self.longitude}'
+
 
 class GpsClient(BaseClient): # new class for logging `__class__`
     pass
@@ -55,7 +67,11 @@ class GpsController:
             nmea_string = self.client.read()
 
             if nmea_string:
-                msg = pynmea2.parse(nmea_string)
+                try:
+                    msg = pynmea2.parse(nmea_string)
+                except pynmea2.nmea.ParseError: # FIXME
+                    logging.warning("pynmea2 Parsing Error")
+                    continue
 
                 if msg.sentence_type == "RMC":  # GARMIN & SMALL
                     self.nmea_data.date = msg.datestamp

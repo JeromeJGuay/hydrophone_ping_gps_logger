@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from pathlib import Path
 
-from hydrophone_ping_gps_logger.gps import GpsController
+from hydrophone_ping_gps_logger.gps import GpsController, NmeaData
 from hydrophone_ping_gps_logger.transponder import TransponderController
 
 
@@ -28,7 +28,7 @@ class PingLoggerController:  # Fixme change name
 
     def __init__(self):
 
-        self.garmin_19x_hvs_controller = GpsController()
+        self.gps_controller = GpsController()
         self.transponder_controller = TransponderController()
         self.ping_run_thread: threading.Thread = None
 
@@ -39,10 +39,19 @@ class PingLoggerController:  # Fixme change name
         self.output_filename: str = None
 
     def connect_gps(self, port, baudrate):
-        self.garmin_19x_hvs_controller.start(port=port, baudrate=baudrate)
+        self.gps_controller.start(port=port, baudrate=baudrate)
+
+    def disconnect_gps(self):
+        self.gps_controller.stop()
+        self.gps_controller.nmea_data = NmeaData("", "", "", "")
+        self.stop_ping_run()
 
     def connect_transponder(self, port, baudrate=9600): #FIXME bauderate ???
         self.transponder_controller.start(port=port, baudrate=baudrate)
+
+    def disconnect_transponder(self):
+        self.transponder_controller.stop()
+        self.stop_ping_run()
 
     def start_ping_run(self, run_parameters: PingRunParameters):
         if self.is_running:
@@ -54,8 +63,8 @@ class PingLoggerController:  # Fixme change name
         if self.ping_run_parameters.number_of_pings == 0:
             self.ping_run_parameters.number_of_pings = 1e10 # basically infinite ?
 
-        if self.garmin_19x_hvs_controller.is_connected and self.transponder_controller.is_connected:
-            if self.garmin_19x_hvs_controller.is_running:
+        if self.gps_controller.is_connected and self.transponder_controller.is_connected:
+            if self.gps_controller.is_running:
 
                 self.is_running = True
 
@@ -64,7 +73,7 @@ class PingLoggerController:  # Fixme change name
                 self.ping_run_thread = threading.Thread(target=self._ping_run, name="ping_thread", daemon=True)
                 self.ping_run_thread.start()
         else:
-            logging.warning("Devices not connected")
+            logging.warning("Devices not connected. Ping Run not started")
 
     def _ping_run(self):
         _count = 0
@@ -105,10 +114,10 @@ class PingLoggerController:  # Fixme change name
 
     def write_data_to_ping_file(self):
         with open(self.output_filename, "a") as f:
-            f.write(f"{self.garmin_19x_hvs_controller.nmea_data.date},"
-                    f"{self.garmin_19x_hvs_controller.nmea_data.time},"
-                    f"{self.garmin_19x_hvs_controller.nmea_data.latitude},"
-                    f"{self.garmin_19x_hvs_controller.nmea_data.longitude},"
+            f.write(f"{self.gps_controller.nmea_data.date},"
+                    f"{self.gps_controller.nmea_data.time},"
+                    f"{self.gps_controller.nmea_data.latitude},"
+                    f"{self.gps_controller.nmea_data.longitude},"
                     f"{self.ping_run_parameters.transponder_depth}\n")
 
 
@@ -125,12 +134,26 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     m = PingLoggerController()
-    m.connect_gps(port="COM4", baudrate=4800) # Garmin
-    m.connect_transponder(port="")
+    m.connect_gps(
+        port="COM4",
+        baudrate=4800
+    ) # Garmin
 
-    prp = PingRunParameters("./", "Leim", 1, 1/20, 20, start_delay_seconds=10)
+    m.connect_transponder(
+        port="",
+        baudrate=9600
+    )
 
-    m.start_ping_run(run_parameters = prp)
+    prp = PingRunParameters(
+        output_directory_path="./",
+        ship_name="Leim",
+        transponder_depth=1,
+        ping_interval=1/20,
+        number_of_pings=20,
+        start_delay_seconds=10
+    )
+
+    m.start_ping_run(run_parameters=prp)
 
 
 

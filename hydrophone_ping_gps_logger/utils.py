@@ -25,7 +25,7 @@ def list_usb_devices() -> dict[str, str]:
     return {f"{d.vendor_name} {d.product_name} {d.product_id}": d.device_path for d in devices}
 
 
-def list_serial_ports() -> dict[str, str]:
+def list_serial_ports() -> list:
     """FIXME Test me ?
 
     :return dict of {device_name: device_path}
@@ -33,7 +33,6 @@ def list_serial_ports() -> dict[str, str]:
     """
     ports_info = serial.tools.list_ports.comports()
 
-    return {pi.device: pi.name for pi in ports_info}
+    return [pi.device for pi in ports_info]
 
 
-# "USB\VID_0403&PID_6001\FTUG1JXW"
