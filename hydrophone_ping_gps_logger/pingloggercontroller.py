@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from pathlib import Path
 
+from hydrophone_ping_gps_logger import gps
 from hydrophone_ping_gps_logger.gps import GpsController, NmeaData
 from hydrophone_ping_gps_logger.transponder import TransponderController
 
@@ -35,6 +36,8 @@ class PingLoggerController:  # Fixme change name
         self.is_running = False  # FIXME CHANGE NAME
 
         self.ping_run_parameters: PingRunParameters = None
+        self.ping_count = 0
+        self.count_down_delay = 0
 
         self.output_filename: str = None
 
@@ -63,7 +66,7 @@ class PingLoggerController:  # Fixme change name
         if self.ping_run_parameters.number_of_pings == 0:
             self.ping_run_parameters.number_of_pings = 1e10 # basically infinite ?
 
-        if self.gps_controller.is_connected and self.transponder_controller.is_connected:
+        if self.gps_controller.is_connected:#FIXME and self.transponder_controller.is_connected:
             if self.gps_controller.is_running:
 
                 self.is_running = True
@@ -76,21 +79,30 @@ class PingLoggerController:  # Fixme change name
             logging.warning("Devices not connected. Ping Run not started")
 
     def _ping_run(self):
-        _count = 0
+        self.ping_count = 0
 
         logging.info(f"Start delay: {self.ping_run_parameters.start_delay_seconds} seconds.")
-        time.sleep(self.ping_run_parameters.start_delay_seconds)
+
+        self.count_down_delay = self.ping_run_parameters.start_delay_seconds
+        while self.count_down_delay > 0:
+            self.count_down_delay -= 1
+            time.sleep(1)
 
         logging.info(f"Ping mission started. Interval: {self.ping_run_parameters.ping_interval} seconds.")
         while self.is_running:
-            self.write_data_to_ping_file()
-            self.transponder_controller.ping()
-
-            _count += 1
-
-            if _count >= self.ping_run_parameters.number_of_pings:
+            if not self.gps_controller.is_running:
                 self.is_running = False
                 break
+
+            self.write_data_to_ping_file()
+            # self.transponder_controller.ping() FXIME
+
+            self.ping_count += 1
+
+            if self.ping_count >= self.ping_run_parameters.number_of_pings:
+                self.is_running = False
+                break
+
             time.sleep(self.ping_run_parameters.ping_interval)
 
     def stop_ping_run(self):
@@ -107,9 +119,10 @@ class PingLoggerController:  # Fixme change name
         with open(self.output_filename, "w") as f:
             f.write(f"# datetime: {timestamp}\n")
             f.write(f"# ship_name: {self.ping_run_parameters.ship_name}\n")
-            f.write(f"# ping_rate: {self.ping_run_parameters.ping_interval}\n")
+            f.write(f"# ping_interval: {self.ping_run_parameters.ping_interval}\n")
             f.write(f"# number_of_pings: {self.ping_run_parameters.number_of_pings}\n")
             f.write(f"# start_delay_seconds: {self.ping_run_parameters.start_delay_seconds}\n")
+            f.write(f"# header: date, time, latitude, longitude, depth\n")
             pass
 
     def write_data_to_ping_file(self):
