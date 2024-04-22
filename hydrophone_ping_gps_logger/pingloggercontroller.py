@@ -71,10 +71,10 @@ class PingLoggerController:  # Fixme change name
     def _ping_run(self):
         _count = 0
 
-        logging.log(f"Start delay: {self.ping_run_parameters.start_delay_seconds} seconds.")
+        logging.info(f"Start delay: {self.ping_run_parameters.start_delay_seconds} seconds.")
         time.sleep(self.ping_run_parameters.start_delay_seconds)
 
-        logging.log(f"Ping mission started. Interval: {self.ping_run_parameters.ping_interval} seconds.")
+        logging.info(f"Ping mission started. Interval: {self.ping_run_parameters.ping_interval} seconds.")
         while self.is_running:
             self.write_data_to_ping_file()
             self.transponder_controller.ping()

@@ -35,7 +35,7 @@ class ShipNmeaController:
 
     def stop(self):
         self.is_running = False
-        logging.log(f"Ship nmea sampling stopped")
+        logging.info(f"Ship nmea sampling stopped")
         if self.run_thread:
             self.run_thread.join()  # Wait for the thread to exit
         self.client.disconnect()

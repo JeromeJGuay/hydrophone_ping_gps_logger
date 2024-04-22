@@ -47,7 +47,7 @@ class BaseClient:
         """
         try:
             self.serial = serial.Serial(port=self.port, baudrate=self.baud_rate, timeout=self.timeout)
-            logging.log(f"[{self.client_name}] Client connected")
+            logging.info(f"[{self.client_name}] Client connected")
             return 1
         except serial.serialutil.SerialException:
             logging.error(f"[{self.client_name}] Could not connect")
@@ -55,12 +55,12 @@ class BaseClient:
 
     def disconnect(self):
         self.serial.close()
-        logging.log(f"[{self.client_name}] Client closed")
+        logging.info(f"[{self.client_name}] Client closed")
 
     def read(self) -> str:
         try:
             self.serial_input_buffer = self.serial.readline(size=self.buffer_size).decode(self.encoding)
-            logging.log(f"[{self.client_name}] Serial input buffer: {self.serial_input_buffer}")
+            logging.info(f"[{self.client_name}] Serial input buffer: {self.serial_input_buffer}")
         except serial.SerialTimeoutException:
             self.serial_input_buffer = None
             logging.warning(f"[{self.client_name}] Serial input buffer: None")
@@ -70,6 +70,6 @@ class BaseClient:
     def write(self, msg: str):
         try:
             self.serial.write(msg.encode(self.encoding))
-            logging.log(f"[{self.client_name}] Serial write: {msg}")
+            logging.info(f"[{self.client_name}] Serial write: {msg}")
         except serial.serialutil.SerialException:
             logging.warning(f"[{self.client_name}] Serial write failed")

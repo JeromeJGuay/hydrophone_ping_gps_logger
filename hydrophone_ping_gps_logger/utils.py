@@ -12,7 +12,7 @@ def find_usb_device(device_name) -> str:
     usb_devices = {} # fixme
 
     if device_name in usb_devices:
-        logging.log(f"{device_name} found in USB devices")
+        logging.info(f"{device_name} found in USB devices")
         return usb_devices[device_name]
 
     logging.error(f"{device_name} not found in USB devices")
@@ -34,3 +34,6 @@ def list_serial_ports() -> dict[str, str]:
     ports_info = serial.tools.list_ports.comports()
 
     return {pi.device: pi.name for pi in ports_info}
+
+
+# "USB\VID_0403&PID_6001\FTUG1JXW"

@@ -37,7 +37,7 @@ class Garmin19xHvsController:
 
     def stop(self):
         self.is_running = False
-        logging.log(f"Garmin 19x Hvs sampling stopped")
+        logging.info(f"Garmin 19x Hvs sampling stopped")
         if self.run_thread:
             self.run_thread.join()  # Wait for the thread to exit
         self.client.disconnect()
@@ -64,3 +64,15 @@ class Garmin19xHvsController:
         self.nmea_data.time = _split_string[1]
         self.nmea_data.latitude = _split_string[3] + _split_string[4]
         self.nmea_data.longitude = _split_string[5] + _split_string[6]
+
+
+if __name__ == '__main__':
+    from utils import list_serial_ports
+
+    d = list_serial_ports()
+
+    p = "COM4"
+
+    g=Garmin19xHvsController()
+
+    g.start(p, sampling_interval=1)
