@@ -10,6 +10,9 @@ class NmeaData:
     latitude: str
     longitude: str
 
+    def __str__(self):
+        return f'{self.date}, {self.time}, {self.latitude}, {self.longitude}'
+
 
 class BaseClient:
     """
@@ -26,17 +29,17 @@ class BaseClient:
     ----------------------------
     """
     encoding = 'utf-8'
-    baud_rate = 9600
     buffer_size = 1024
     timeout = 0.5
 
-    def __init__(self, port: str):
+    def __init__(self, port: str, baudrate: int):
         """
         :param port: Usb port address (path)
         """
         self.port = port
+        self.baudrate = baudrate
         self.serial: serial.Serial = None
-        self.serial_input_buffer: str = None
+        self.serial_input_buffer: str = ""
 
         self.client_name = str(self.__class__).split('.')[-1][:-2]  # for logging purposes
 
@@ -46,7 +49,8 @@ class BaseClient:
         :return: `1` if connected else `0`
         """
         try:
-            self.serial = serial.Serial(port=self.port, baudrate=self.baud_rate, timeout=self.timeout)
+            self.serial = serial.Serial(port=self.port, baudrate=self.baudrate, timeout=self.timeout)
+            self.serial.readline()  # clears input buffer
             logging.info(f"[{self.client_name}] Client connected")
             return 1
         except serial.serialutil.SerialException:
@@ -59,11 +63,16 @@ class BaseClient:
 
     def read(self) -> str:
         try:
-            self.serial_input_buffer = self.serial.readline(size=self.buffer_size).decode(self.encoding)
-            logging.info(f"[{self.client_name}] Serial input buffer: {self.serial_input_buffer}")
+            self.serial_input_buffer = self.serial.readline().decode(self.encoding).strip("\n")
+            logging.debug(f"[{self.client_name}] Serial input buffer: {self.serial_input_buffer}")
         except serial.SerialTimeoutException:
-            self.serial_input_buffer = None
-            logging.warning(f"[{self.client_name}] Serial input buffer: None")
+            self.serial_input_buffer = ""
+            logging.warning(f"[{self.client_name}] (Timeout) Serial Disconnected")
+            # Raise ERROR FIXME
+        except UnicodeDecodeError:
+            self.serial_input_buffer = ""
+            logging.warning(f"[{self.client_name}] (Decode Error)")
+            # Raise ERROR FIXME
 
         return self.serial_input_buffer
 

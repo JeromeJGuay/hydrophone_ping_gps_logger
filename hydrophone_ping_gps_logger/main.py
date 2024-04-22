@@ -1,3 +1,27 @@
+"""
+
+-> One client for all gsp should be good.
+
+-> Small GPS: BaudRate 9600
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GNRMC,,V,,,,,,,,,,N*4D
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GNVTG,,,,,,,,,N*2E
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GNGGA,,,,,,0,00,99.99,,,,,,*56
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GNGSA,A,1,,,,,,,,,,,,,99.99,99.99,99.99*2E
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GNGSA,A,1,,,,,,,,,,,,,99.99,99.99,99.99*2E
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GPGSV,1,1,02,07,,,12,13,,,11*7D
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GLGSV,1,1,00*65
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GNGLL,,,,,,V,N*7A
+    INFO:root:[Garmin19xHvsClient] Serial input buffer:
+
+-> garming 19x hvs: baudrate: 4800
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GPRMC,141207,V,4838.4572,N,06809.4211,W,,,220424,017.6,W*60
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GPGGA,141207,4838.4572,N,06809.4211,W,0,00,,,M,,M,,*4C
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GPGSA,A,1,,,,,,,,,,,,,,,*1E
+    INFO:root:[Garmin19xHvsClient] Serial input buffer: $GPGSV,1,1,00*79
+    INFO:root:[Garmin19xHvsClient] Serial input buffer:
+
+"""
+
 from pathlib import Path
 
 import flet as ft
@@ -8,6 +32,7 @@ from pingloggercontroller import PingLoggerController, PingRunParameters
 
 
 FONT_SIZE_M = 20
+
 
 
 
@@ -39,7 +64,7 @@ def main(page: ft.Page):
 
 
     pingloggercontroller = PingLoggerController()
-    pingloggercontroller.connect_garmin_19x_hvs(port="")#"/dev/ttyUSB0")
+    pingloggercontroller.connect_gps(port="")#"/dev/ttyUSB0")
     pingloggercontroller.connect_transponder(port="")  # "/dev/ttyUSB0")
 
     def pick_directory_reseult(e: ft.FilePickerResultEvent):

@@ -7,13 +7,11 @@ from dataclasses import dataclass
 
 from pathlib import Path
 
-from hydrophone_ping_gps_logger.garmin19xhvs import Garmin19xHvsController
-# from hydrophone_ping_gps_logger.ship_nmea_client import ShipNmeaController
+from hydrophone_ping_gps_logger.gps import GpsController
 from hydrophone_ping_gps_logger.transponder import TransponderController
 
 
 GARMIN_19XHVS_SAMPLING_INTERVAL = 1/20
-#SHIP_NMEA_SAMPLING_INTERVAL = 1/20
 
 
 @dataclass
@@ -30,7 +28,7 @@ class PingLoggerController:  # Fixme change name
 
     def __init__(self):
 
-        self.garmin_19x_hvs_controller = Garmin19xHvsController()
+        self.garmin_19x_hvs_controller = GpsController()
         self.transponder_controller = TransponderController()
         self.ping_run_thread: threading.Thread = None
 
@@ -40,11 +38,11 @@ class PingLoggerController:  # Fixme change name
 
         self.output_filename: str = None
 
-    def connect_garmin_19x_hvs(self, port):
-        self.garmin_19x_hvs_controller.start(port=port, sampling_interval=GARMIN_19XHVS_SAMPLING_INTERVAL)
+    def connect_gps(self, port, baudrate):
+        self.garmin_19x_hvs_controller.start(port=port, baudrate=baudrate)
 
-    def connect_transponder(self, port):
-        self.transponder_controller.start(port=port)
+    def connect_transponder(self, port, baudrate=9600): #FIXME bauderate ???
+        self.transponder_controller.start(port=port, baudrate=baudrate)
 
     def start_ping_run(self, run_parameters: PingRunParameters):
         if self.is_running:
@@ -115,8 +113,19 @@ class PingLoggerController:  # Fixme change name
 
 
 if __name__ == "__main__":
+    # garmin 4800
+    # GNSS 9600
+    # Ship ??
+
+    from utils import list_serial_ports
+
+    d = list_serial_ports()
+
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO)
+
     m = PingLoggerController()
-    m.connect_garmin_19x_hvs(port="")
+    m.connect_gps(port="COM4", baudrate=4800) # Garmin
     m.connect_transponder(port="")
 
     prp = PingRunParameters("./", "Leim", 1, 1/20, 20, start_delay_seconds=10)

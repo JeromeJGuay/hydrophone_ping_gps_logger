@@ -5,11 +5,8 @@ import threading
 from hydrophone_ping_gps_logger.common import BaseClient
 
 
-class TransponderClient(BaseClient):
-    encoding = "utf-8"  # fixme
-    baud_rate = 9600
-    buffer_size = 1024
-    timeout = 0.5  # Fixme Maybe reduce it to 0.1 ?
+class TransponderClient(BaseClient): # new class for logging `__class__`
+    pass
 
 
 class TransponderController:
@@ -19,11 +16,10 @@ class TransponderController:
 
     def __init__(self):
         self.client: TransponderClient = None
-
         self.is_connected = False
 
-    def start(self, port: str):
-        self.client = TransponderClient(port=port)
+    def start(self, port: str, baudrate=9600):
+        self.client = TransponderClient(port=port, baudrate=baudrate)
         if self.client.connect() == 1:
             self.is_connected = True
 
