@@ -14,6 +14,9 @@ from hydrophone_ping_gps_logger.transponder import TransponderController
 
 GARMIN_19XHVS_SAMPLING_INTERVAL = 1/20
 
+FIELD_HEADER = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon", "depth"]
+FIELD_PADDING = [16, 10, 10, 12, 11, 7]
+
 
 @dataclass
 class PingRunParameters:
@@ -38,6 +41,9 @@ class PingLoggerController:  # Fixme change name
         self.ping_run_parameters: PingRunParameters = None
         self.ping_count = 0
         self.count_down_delay = 0
+
+        self.ping_paused_event = threading.Event()
+        self.ping_paused_event.set()
 
         self.output_filename: str = None
 
@@ -66,7 +72,7 @@ class PingLoggerController:  # Fixme change name
         if self.ping_run_parameters.number_of_pings == 0:
             self.ping_run_parameters.number_of_pings = 1e10 # basically infinite ?
 
-        if self.gps_controller.is_connected:#FIXME and self.transponder_controller.is_connected:
+        if self.gps_controller.is_connected and self.transponder_controller.is_connected:
             if self.gps_controller.is_running:
 
                 self.is_running = True
@@ -90,6 +96,11 @@ class PingLoggerController:  # Fixme change name
 
         logging.info(f"Ping mission started. Interval: {self.ping_run_parameters.ping_interval} seconds.")
         while self.is_running:
+            if not self.ping_paused_event.is_set():
+                logging.info("Enter ping run wait section")
+                self.ping_paused_event.wait()
+                logging.info("Enter ping run wait released")
+
             if not self.gps_controller.is_running:
                 self.is_running = False
                 break
@@ -105,16 +116,27 @@ class PingLoggerController:  # Fixme change name
 
             time.sleep(self.ping_run_parameters.ping_interval)
 
+    def pause_ping_run(self):
+        self.ping_paused_event.clear()
+        logging.info("pause event clear")
+
+    def unpause_ping_run(self):
+        self.ping_paused_event.set()
+        logging.info("pause event set")
+
     def stop_ping_run(self):
         self.is_running = False
+        self.ping_count = 0
         if self.ping_run_thread:
             self.ping_run_thread.join()
 
     def init_ping_file(self):
-        timestamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        timestamp = get_timestamp()
 
         Path(self.ping_run_parameters.output_directory_path).mkdir(parents=True, exist_ok=True)
-        self.output_filename = Path(self.ping_run_parameters.output_directory_path).joinpath(f"{timestamp}.ping")
+        self.output_filename = Path(self.ping_run_parameters.output_directory_path).joinpath(
+            f"{timestamp}_{self.ping_run_parameters.ship_name}.ping"
+        )
 
         with open(self.output_filename, "w") as f:
             f.write(f"# datetime: {timestamp}\n")
@@ -122,16 +144,32 @@ class PingLoggerController:  # Fixme change name
             f.write(f"# ping_interval: {self.ping_run_parameters.ping_interval}\n")
             f.write(f"# number_of_pings: {self.ping_run_parameters.number_of_pings}\n")
             f.write(f"# start_delay_seconds: {self.ping_run_parameters.start_delay_seconds}\n")
-            f.write(f"# header: date, time, latitude, longitude, depth\n")
-            pass
+            f.write(format_data_line(FIELD_HEADER) + "\n")
 
     def write_data_to_ping_file(self):
         with open(self.output_filename, "a") as f:
-            f.write(f"{self.gps_controller.nmea_data.date},"
-                    f"{self.gps_controller.nmea_data.time},"
-                    f"{self.gps_controller.nmea_data.latitude},"
-                    f"{self.gps_controller.nmea_data.longitude},"
-                    f"{self.ping_run_parameters.transponder_depth}\n")
+
+            f.write(
+                format_data_line(
+                    [
+                        get_timestamp(),
+                        self.gps_controller.nmea_data.date,
+                        self.gps_controller.nmea_data.time,
+                        self.gps_controller.nmea_data.latitude,
+                        self.gps_controller.nmea_data.longitude,
+                        self.ping_run_parameters.transponder_depth
+                    ]
+
+                )+"\n"
+            )
+
+
+def format_data_line(data: list) -> str:
+    return ",".join(f"{d:>{p}}" for d, p in zip(data, FIELD_PADDING))
+
+
+def get_timestamp():
+    return datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
 
 
 if __name__ == "__main__":
