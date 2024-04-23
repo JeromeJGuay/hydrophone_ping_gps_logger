@@ -30,6 +30,7 @@ def main(page: ft.Page):
     ###### COMPORTS ######
 
     def refresh_comports(e: ControlEvent):
+        used_comports = []
         if ping_controller.gps_controller.is_connected:
             used_comports.append(ping_controller.gps_controller.client.port)
 
