@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 import flet as ft
-from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider, TextButton
+from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider, TextButton, Container, Card
 from flet_core.control_event import ControlEvent
 
 from hydrophone_ping_gps_logger.utils import list_serial_ports
@@ -30,15 +30,11 @@ def main(page: ft.Page):
     ###### COMPORTS ######
 
     def refresh_comports(e: ControlEvent):
-        comport_list = [f"COM{x}" for x in range(10)]# list_serial_ports()
-        used_comports = ['COM5'] #FIXME
+        if ping_controller.gps_controller.is_connected:
+            used_comports.append(ping_controller.gps_controller.client.port)
 
-        # FIXME uncomment
-        # if ping_controller.gps_controller.is_connected:
-        #     used_comports.append(ping_controller.gps_controller.client.port)
-        #
-        # if ping_controller.transponder_controller.is_connected:
-        #     used_comports.append(ping_controller.transponder_controller.client.port)
+        if ping_controller.transponder_controller.is_connected:
+            used_comports.append(ping_controller.transponder_controller.client.port)
 
         dropdown_gps_port.options = [
             ft.dropdown.Option(cp, disabled=True if cp in used_comports else False) for cp in comport_list
@@ -97,21 +93,23 @@ def main(page: ft.Page):
 
     dropdown_transponder_port = Dropdown(
         label="Transponder ComPort",
-        width=210,
+        width=220,
         #alignment=ft.alignment.center,
         options=list(ft.dropdown.Option(comport) for comport in list_serial_ports()),
         on_change=validate_transponder_parameters,
+        bgcolor=ft.colors.GREY_50
     )
 
     dropdown_transponder_baudrate = Dropdown(
         label="Transponder Baudrate",
-        width=210,
+        width=220,
         alignment=ft.alignment.center,
         options=list(ft.dropdown.Option(key=k, text=t) for k, t in zip(
             [2400, 4800, 9600, 19200, 38400, 57600, 115200],
             [None, None, None, None, None, None, None]
         )),
         on_change=validate_transponder_parameters,
+        bgcolor=ft.colors.GREY_50
     )
     button_connect_transponder = ElevatedButton(
         text="Connect Transponder", width=200,
@@ -159,21 +157,23 @@ def main(page: ft.Page):
 
     dropdown_gps_port = Dropdown(
         label="Gps ComPort",
-        width=200,
+        width=220,
         alignment=ft.alignment.center,
         options=list(ft.dropdown.Option(comport) for comport in list_serial_ports()),
         on_change=validate_gps_parameters,
+        bgcolor=ft.colors.GREY_50
     )
 
     dropdown_gps_baudrate = Dropdown(
         label="Gps Baudrate",
-        width=200,
+        width=220,
         alignment=ft.alignment.center,
         options=list(ft.dropdown.Option(key=k, text=t) for k, t in zip(
             [2400, 4800, 9600, 19200, 38400, 57600, 115200],
             [None, "4800 (Garmin 19x Hvs)", "9600 (GNSS)", None, None, None, None]
         )),
         on_change=validate_gps_parameters,
+        bgcolor=ft.colors.GREY_50
     )
     button_connect_gps = ElevatedButton(
         text="Connect GPS", width=200, disabled=True, on_click=connect_gps, bgcolor=ft.colors.LIGHT_GREEN
@@ -207,10 +207,6 @@ def main(page: ft.Page):
         validate_ping_run(e)
 
     def validate_ping_run(e: ControlEvent = None):  #rename
-        ping_controller.transponder_controller.is_connected = True  # FIXME REMOVE
-        ping_controller.gps_controller.is_connected = True  # FIXME REMOVE
-        ping_controller.gps_controller.is_running = True  # FIXME REMOVE
-
         if (all([text_ship_name.value,
                  text_directory_path.value,
                  text_ping_interval.value,
@@ -237,16 +233,15 @@ def main(page: ft.Page):
     text_number_of_ping = TextField(label="Number Of Ping", value="0", text_size=FONT_SIZE_M,
                                     text_align=ft.TextAlign.RIGHT, width=250)
     text_ping_count = TextField(label="Ping Count", value="0", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
-                                width=150, disabled=True, color=ft.colors.LIGHT_BLUE, bgcolor=ft.colors.GREY_100)
+                                 width=150, disabled=True, color=ft.colors.LIGHT_BLUE, bgcolor=ft.colors.GREY_100)
     text_ping_interval = TextField(label="Ping Interval", value="1", suffix_text="second", text_size=FONT_SIZE_M,
                                    text_align=ft.TextAlign.RIGHT, width=250)
     text_start_delay = TextField(label="Start Delay", suffix_text=" second", value="0", text_size=FONT_SIZE_M,
                                  text_align=ft.TextAlign.RIGHT, width=250)
-    text_countdown_delay = TextField(label="Countdown", value="", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
-                                     width=150, disabled=True, color=ft.colors.LIGHT_BLUE, bgcolor=ft.colors.GREY_100)
+    text_countdown_delay = TextField(label="Countdown", value="0", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
+                                     width=150, disabled=True, suffix_text="second", color=ft.colors.LIGHT_BLUE, bgcolor=ft.colors.GREY_100)
     text_transponder_depth = TextField(label="Transponder depth", suffix_text=" meter", value="0",
                                        text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT, width=250)
-
 
     text_ship_name.on_change = validate_ping_run
     text_directory_path.on_change = validate_ping_run
@@ -256,6 +251,7 @@ def main(page: ft.Page):
     text_transponder_depth.on_change = validate_ping_run
 
     icon_button_directory.on_click = select_directory
+
 
 
     ##### START/STOP RUN #####
@@ -277,11 +273,11 @@ def main(page: ft.Page):
             button_stop.disabled = False
 
             page.update()
-
     def pause_ping_run(e: ControlEvent = None):
         if ping_controller.is_running:
             ping_controller.pause_ping_run()
             button_pause.text = "Resume"
+            button_pause.icon = ft.icons.START_ROUNDED
             button_pause.on_click = unpause_ping_run
             page.update()
 
@@ -289,6 +285,7 @@ def main(page: ft.Page):
         if ping_controller.is_running:
             ping_controller.unpause_ping_run()
             button_pause.text = "Pause"
+            button_pause.icon = ft.icons.PAUSE_ROUNDED
             button_pause.on_click = pause_ping_run
             page.update()
 
@@ -300,20 +297,38 @@ def main(page: ft.Page):
 
         ping_controller.stop_ping_run()
 
-    button_start = ElevatedButton(text="Start", width=200, disabled=True, on_click=start_ping_run, bgcolor=ft.colors.GREEN_200)
-    button_pause = ElevatedButton(text="Pause", width=200, disabled=True, on_click=pause_ping_run, bgcolor=ft.colors.ORANGE_200)
-    button_stop = ElevatedButton(text="Stop", width=200, disabled=True, on_click=stop_ping_run, bgcolor=ft.colors.RED_200)
+    button_start = ElevatedButton(
+        text="Start", width=200, height=50, disabled=True, on_click=start_ping_run, bgcolor=ft.colors.GREEN_200,
+        icon=ft.icons.PLAY_ARROW_ROUNDED
+    )
+    button_pause = ElevatedButton(
+        text="Pause", width=200, height=50, disabled=True, on_click=pause_ping_run, bgcolor=ft.colors.ORANGE_200,
+        icon=ft.icons.PAUSE_ROUNDED
+    )
+    button_stop = ElevatedButton(
+        text="Stop", width=200, height=50, disabled=True, on_click=stop_ping_run, bgcolor=ft.colors.RED_200,
+        icon=ft.icons.STOP_ROUNDED
+    )
 
 
+    #### Layout ####
 
-    #### Page ####
+    layout_gps = Row(
+        [dropdown_gps_port, dropdown_gps_baudrate, button_connect_gps],
+        alignment=ft.MainAxisAlignment.CENTER
+    )
+    layout_transponder = Row(
+        [dropdown_transponder_port, dropdown_transponder_baudrate, button_connect_transponder],
+        alignment=ft.MainAxisAlignment.CENTER
+    )
+
+    layout_devices = Row([button_refresh_comports, Column([layout_transponder, layout_gps])])
+
     page.add(
-        Row([button_refresh_comports], alignment=ft.MainAxisAlignment.CENTER),
-        Row([dropdown_transponder_port, dropdown_transponder_baudrate, button_connect_transponder],
-            alignment=ft.MainAxisAlignment.CENTER),
-        Row([dropdown_gps_port, dropdown_gps_baudrate, button_connect_gps],
-            alignment=ft.MainAxisAlignment.CENTER),
+        Divider(height=9, thickness=3, leading_indent=30, trailing_indent=30),
+        layout_devices,
         Row([text_gps_date, text_gps_time, text_gps_lat, text_gps_lon], alignment=ft.MainAxisAlignment.CENTER),
+        Divider(height=9, thickness=3, leading_indent=30, trailing_indent=30),
         Row(
             controls=[
                 Column(
@@ -330,10 +345,9 @@ def main(page: ft.Page):
             ],
             alignment=ft.MainAxisAlignment.CENTER
         ),
-        Row([
-            button_start, button_pause, button_stop],
-            alignment=ft.MainAxisAlignment.CENTER
-        ),
+        Divider(height=9, thickness=3, leading_indent=30, trailing_indent=30),
+        Row([button_start, button_pause, button_stop],
+            alignment=ft.MainAxisAlignment.CENTER),
     )
 
     while True:
