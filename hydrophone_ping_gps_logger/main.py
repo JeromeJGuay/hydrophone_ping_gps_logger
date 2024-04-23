@@ -1,5 +1,15 @@
 """
 BaudRates: Garmin=4800, GNSS=9600, Ship=????
+
+TODO
+
+
++ Catch encoding error on connection -> wrong baudrate.
++ Catch Disconnection Error after N number of empty NMEA String.
++ FILE ACCESS DENIED Catch error to stop.
+
+
+
 """
 
 import time
@@ -14,6 +24,8 @@ from hydrophone_ping_gps_logger.utils import list_serial_ports
 from hydrophone_ping_gps_logger.pingloggercontroller import PingLoggerController, PingRunParameters
 
 FONT_SIZE_M = 20
+
+VERSION = '1.0.0'
 
 
 def main(page: ft.Page):
@@ -226,7 +238,9 @@ def main(page: ft.Page):
 
 
     text_ship_name = TextField(label="Ship Name", value="", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
-                               width=400)
+                               width=200)
+    text_transponder_depth = TextField(label="Transponder depth", suffix_text=" meter", value="0",
+                                       text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT, width=150)
     text_directory_path = TextField(label="Target Directory", value="", text_size=FONT_SIZE_M,
                                     text_align=ft.TextAlign.RIGHT, width=400, disabled=True, color=ft.colors.LIGHT_BLUE,
                                     bgcolor=ft.colors.GREY_100)
@@ -242,8 +256,6 @@ def main(page: ft.Page):
                                  text_align=ft.TextAlign.RIGHT, width=250)
     text_countdown_delay = TextField(label="Countdown", value="0", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
                                      width=150, disabled=True, suffix_text="second", color=ft.colors.LIGHT_BLUE, bgcolor=ft.colors.GREY_100)
-    text_transponder_depth = TextField(label="Transponder depth", suffix_text=" meter", value="0",
-                                       text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT, width=250)
 
     text_ship_name.on_change = validate_ping_run
     text_directory_path.on_change = validate_ping_run
@@ -274,30 +286,55 @@ def main(page: ft.Page):
             button_pause.disabled = False
             button_stop.disabled = False
 
+            text_ship_name.disabled = True
+            icon_button_directory.disabled = True
+            text_ping_interval.disabled = True
+            text_number_of_ping.disabled = True
+            text_start_delay.disabled = True
+            text_transponder_depth.disabled = True
+
+
             page.update()
+
     def pause_ping_run(e: ControlEvent = None):
         if ping_controller.is_running:
             ping_controller.pause_ping_run()
-            button_pause.text = "Resume"
-            button_pause.icon = ft.icons.START_ROUNDED
-            button_pause.on_click = unpause_ping_run
-            page.update()
+        button_pause.text = "Resume"
+        button_pause.icon = ft.icons.START_ROUNDED
+        button_pause.on_click = unpause_ping_run
+        page.update()
 
     def unpause_ping_run(e: ControlEvent = None):
-        if ping_controller.is_running:
-            ping_controller.unpause_ping_run()
-            button_pause.text = "Pause"
-            button_pause.icon = ft.icons.PAUSE_ROUNDED
-            button_pause.on_click = pause_ping_run
-            page.update()
+        ping_controller.unpause_ping_run()
+        button_pause.text = "Pause"
+        button_pause.icon = ft.icons.PAUSE_ROUNDED
+        button_pause.on_click = pause_ping_run
+
+        page.update()
 
     def stop_ping_run(e: ControlEvent):
+
+        unpause_ping_run(e)
+        time.sleep(0.1) # this prevent threading bug with the pause event.
+
         button_stop.disabled = True
         button_pause.disabled = True
+
         validate_ping_run(e)
+
+        text_ship_name.disabled = False
+        icon_button_directory.disabled = False
+        text_ping_interval.disabled = False
+        text_number_of_ping.disabled = False
+        text_start_delay.disabled = False
+        text_transponder_depth.disabled = False
+
+
         page.update()
 
         ping_controller.stop_ping_run()
+
+
 
     button_start = ElevatedButton(
         text="Start", width=200, height=50, disabled=True, on_click=start_ping_run, bgcolor=ft.colors.GREEN_200,
@@ -327,6 +364,11 @@ def main(page: ft.Page):
     layout_devices = Row([button_refresh_comports, Column([layout_transponder, layout_gps])])
 
     page.add(
+        Row([Text(F"Version: {VERSION}  ", theme_style=ft.TextThemeStyle.BODY_SMALL, weight=ft.FontWeight.W_500)],
+            alignment=ft.MainAxisAlignment.END),
+        Row([
+            Text("Ping GPS Logger", theme_style=ft.TextThemeStyle.DISPLAY_SMALL, weight=ft.FontWeight.W_500),
+        ], alignment=ft.MainAxisAlignment.CENTER),
         Divider(height=9, thickness=3, leading_indent=30, trailing_indent=30),
         layout_devices,
         Row([text_gps_date, text_gps_time, text_gps_lat, text_gps_lon], alignment=ft.MainAxisAlignment.CENTER),
@@ -335,12 +377,20 @@ def main(page: ft.Page):
             controls=[
                 Column(
                     [
-                        text_ship_name,
-                        Row([text_directory_path, icon_button_directory]),
+                        Row([text_directory_path, icon_button_directory], alignment=ft.MainAxisAlignment.CENTER),
+                        Row([text_ship_name, text_transponder_depth], alignment=ft.MainAxisAlignment.CENTER),
+                    ], alignment=ft.MainAxisAlignment.CENTER
+                )
+            ], alignment=ft.MainAxisAlignment.CENTER
+        ),
+        Divider(height=9, thickness=3, leading_indent=30, trailing_indent=30),
+        Row(
+            controls=[
+                Column(
+                    [
                         text_ping_interval,
                         Row([text_number_of_ping, text_ping_count]),
                         Row([text_start_delay, text_countdown_delay]),
-                        text_transponder_depth,
                     ],
                     alignment=ft.MainAxisAlignment.CENTER
                 )
@@ -352,14 +402,21 @@ def main(page: ft.Page):
             alignment=ft.MainAxisAlignment.CENTER),
     )
 
-    while True:
+    ping_controller.transponder_controller.is_connected = True
+    ping_controller.gps_controller.is_connected = True
+    ping_controller.gps_controller.is_running = True
+
+    def refresh_gps_values():
         text_gps_date.value = str(ping_controller.gps_controller.nmea_data.date)
         text_gps_time.value = str(ping_controller.gps_controller.nmea_data.time)
         text_gps_lat.value = str(ping_controller.gps_controller.nmea_data.latitude)
         text_gps_lon.value = str(ping_controller.gps_controller.nmea_data.longitude)
 
+    while True:
+        refresh_gps_values()
+
+        text_ping_count.value = str(ping_controller.ping_count)
         if ping_controller.is_running:
-            text_ping_count.value = str(ping_controller.ping_count)
             text_countdown_delay.value = str(ping_controller.count_down_delay)
 
         if not ping_controller.is_running:
@@ -367,13 +424,11 @@ def main(page: ft.Page):
             validate_ping_run()
 
         page.update()
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 
-if __name__ == '__main__':
-    import logging
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.INFO)
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-    ft.app(target=main)
-    #ft.app(target=main, view=ft.AppView.WEB_BROWSER)
+ft.app(target=main)

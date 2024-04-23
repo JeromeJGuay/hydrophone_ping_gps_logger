@@ -14,8 +14,8 @@ from hydrophone_ping_gps_logger.transponder import TransponderController
 
 GARMIN_19XHVS_SAMPLING_INTERVAL = 1/20
 
-FIELD_HEADER = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon", "depth"]
-FIELD_PADDING = [16, 10, 10, 12, 11, 7]
+FIELD_HEADER = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon"]
+FIELD_PADDING = [16, 10, 10, 12, 11]
 
 
 @dataclass
@@ -103,10 +103,11 @@ class PingLoggerController:  # Fixme change name
 
             if not self.gps_controller.is_running:
                 self.is_running = False
+                logging.info("ping run break")
                 break
 
             self.write_data_to_ping_file()
-            # self.transponder_controller.ping() FXIME
+            # self.transponder_controller.ping() FIXME
 
             self.ping_count += 1
 
@@ -141,9 +142,10 @@ class PingLoggerController:  # Fixme change name
         with open(self.output_filename, "w") as f:
             f.write(f"# datetime: {timestamp}\n")
             f.write(f"# ship_name: {self.ping_run_parameters.ship_name}\n")
-            f.write(f"# ping_interval: {self.ping_run_parameters.ping_interval}\n")
+            f.write(f"# ping_interval_second: {self.ping_run_parameters.ping_interval}\n")
             f.write(f"# number_of_pings: {self.ping_run_parameters.number_of_pings}\n")
-            f.write(f"# start_delay_seconds: {self.ping_run_parameters.start_delay_seconds}\n")
+            f.write(f"# start_delay_second: {self.ping_run_parameters.start_delay_seconds}\n")
+            f.write(f"# transponder_depth_meter: {self.ping_run_parameters.transponder_depth}\n")
             f.write(format_data_line(FIELD_HEADER) + "\n")
 
     def write_data_to_ping_file(self):
@@ -157,7 +159,6 @@ class PingLoggerController:  # Fixme change name
                         self.gps_controller.nmea_data.time,
                         self.gps_controller.nmea_data.latitude,
                         self.gps_controller.nmea_data.longitude,
-                        self.ping_run_parameters.transponder_depth
                     ]
 
                 )+"\n"
