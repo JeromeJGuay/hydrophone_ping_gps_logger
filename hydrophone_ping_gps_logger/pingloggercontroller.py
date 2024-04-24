@@ -1,3 +1,10 @@
+"""
+Fields should look like this:
+` 20240424T083551, 2024-04-24, 12:35:54+00:00, 4838.4572 N,06809.4211 W`
+
+"""
+
+
 import time
 import datetime
 import logging
@@ -14,9 +21,8 @@ from hydrophone_ping_gps_logger.transponder import TransponderController
 
 GARMIN_19XHVS_SAMPLING_INTERVAL = 1/20
 
-FIELD_HEADER = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon"]
-FIELD_PADDING = [16, 10, 10, 12, 11]
-
+FIELD_NAME = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon"]
+FIELD_PADDING = [16, 11, 15, 12, 13]
 
 @dataclass
 class PingRunParameters:
@@ -39,6 +45,7 @@ class PingLoggerController:  # Fixme change name
         self.is_running = False  # FIXME CHANGE NAME
 
         self.ping_run_parameters: PingRunParameters = None
+
         self.ping_count = 0
         self.count_down_delay = 0
 
@@ -69,8 +76,6 @@ class PingLoggerController:  # Fixme change name
 
         self.ping_run_parameters = run_parameters
 
-        if self.ping_run_parameters.number_of_pings == 0:
-            self.ping_run_parameters.number_of_pings = 1e10 # basically infinite ?
 
         if self.gps_controller.is_connected and self.transponder_controller.is_connected:
             if self.gps_controller.is_running:
@@ -111,7 +116,7 @@ class PingLoggerController:  # Fixme change name
 
             self.ping_count += 1
 
-            if self.ping_count >= self.ping_run_parameters.number_of_pings:
+            if 0 < self.ping_run_parameters.number_of_pings <= self.ping_count:
                 self.is_running = False
                 break
 
@@ -132,7 +137,9 @@ class PingLoggerController:  # Fixme change name
             self.ping_run_thread.join()
 
     def init_ping_file(self):
-        timestamp = get_timestamp()
+        timestamp = (self.gps_controller.nmea_data.date.replace("-", "") +
+         self.gps_controller.nmea_data.time.split("+")[0].replace(":", ""))
+
 
         Path(self.ping_run_parameters.output_directory_path).mkdir(parents=True, exist_ok=True)
         self.output_filename = Path(self.ping_run_parameters.output_directory_path).joinpath(
@@ -143,14 +150,15 @@ class PingLoggerController:  # Fixme change name
             f.write(f"# datetime: {timestamp}\n")
             f.write(f"# ship_name: {self.ping_run_parameters.ship_name}\n")
             f.write(f"# ping_interval_second: {self.ping_run_parameters.ping_interval}\n")
-            f.write(f"# number_of_pings: {self.ping_run_parameters.number_of_pings}\n")
+            f.write(f"# number_of_pings: {int(self.ping_run_parameters.number_of_pings) or -1}\n")
             f.write(f"# start_delay_second: {self.ping_run_parameters.start_delay_seconds}\n")
             f.write(f"# transponder_depth_meter: {self.ping_run_parameters.transponder_depth}\n")
-            f.write(format_data_line(FIELD_HEADER) + "\n")
+            f.write(format_data_line(FIELD_NAME) + "\n")
 
     def write_data_to_ping_file(self):
         with open(self.output_filename, "a") as f:
-
+            print(self.gps_controller.nmea_data.date,
+                        self.gps_controller.nmea_data.time,)
             f.write(
                 format_data_line(
                     [
@@ -166,7 +174,9 @@ class PingLoggerController:  # Fixme change name
 
 
 def format_data_line(data: list) -> str:
-    return ",".join(f"{d:>{p}}" for d, p in zip(data, FIELD_PADDING))
+    line = ",".join(f"{d:>{p}}" for d, p in zip(data, FIELD_PADDING))
+    logging.debug(f"Data written: {line}")
+    return line
 
 
 def get_timestamp():

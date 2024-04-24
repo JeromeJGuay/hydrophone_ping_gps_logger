@@ -74,8 +74,8 @@ class GpsController:
                     continue
 
                 if msg.sentence_type == "RMC":  # GARMIN & SMALL
-                    self.nmea_data.date = msg.datestamp
-                    self.nmea_data.time = msg.timestamp
+                    self.nmea_data.date = str(msg.datestamp)
+                    self.nmea_data.time = str(msg.timestamp)
                     self.nmea_data.latitude = msg.lat + " " + msg.lat_dir
                     self.nmea_data.longitude = msg.lon + " " + msg.lon_dir
 

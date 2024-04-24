@@ -2,8 +2,8 @@
 BaudRates: Garmin=4800, GNSS=9600, Ship=????
 
 TODO
-
-
+---
++ lock comport on connection (run refresh comport)
 + Catch encoding error on connection -> wrong baudrate.
 + Catch Disconnection Error after N number of empty NMEA String.
 + FILE ACCESS DENIED Catch error to stop.
@@ -216,7 +216,7 @@ def main(page: ft.Page):
         directory_picker.get_directory_path(dialog_title="path to ping log directory", initial_directory=Path().home())
 
     def on_change_start_delay(e: ControlEvent = None):
-        text_countdown_delay.value = text_start_delay.value
+        text_countdown_delay.value = str(int(text_start_delay.value))
 
         validate_ping_run(e)
 
@@ -236,24 +236,29 @@ def main(page: ft.Page):
 
         page.update()
 
+    _filter = ft.InputFilter('^[0-9]*')
 
     text_ship_name = TextField(label="Ship Name", value="", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
                                width=200)
     text_transponder_depth = TextField(label="Transponder depth", suffix_text=" meter", value="0",
-                                       text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT, width=150)
+                                       text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT, width=150,
+                                       input_filter=ft.InputFilter('^[0-9]*\.?[0-9]{0,2}'))
     text_directory_path = TextField(label="Target Directory", value="", text_size=FONT_SIZE_M,
                                     text_align=ft.TextAlign.RIGHT, width=400, disabled=True, color=ft.colors.LIGHT_BLUE,
                                     bgcolor=ft.colors.GREY_100)
     icon_button_directory = IconButton(icon=ft.icons.FOLDER, icon_size=20)
 
     text_number_of_ping = TextField(label="Number Of Ping", value="0", text_size=FONT_SIZE_M,
-                                    text_align=ft.TextAlign.RIGHT, width=250)
+                                    text_align=ft.TextAlign.RIGHT, width=250,
+                                    input_filter=ft.InputFilter('^[0-9]*'),)
     text_ping_count = TextField(label="Ping Count", value="0", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
                                  width=150, disabled=True, color=ft.colors.LIGHT_BLUE, bgcolor=ft.colors.GREY_100)
     text_ping_interval = TextField(label="Ping Interval", value="1", suffix_text="second", text_size=FONT_SIZE_M,
-                                   text_align=ft.TextAlign.RIGHT, width=250)
+                                   text_align=ft.TextAlign.RIGHT, width=250,
+                                   input_filter=ft.InputFilter('^[0-9]*'))
     text_start_delay = TextField(label="Start Delay", suffix_text=" second", value="0", text_size=FONT_SIZE_M,
-                                 text_align=ft.TextAlign.RIGHT, width=250)
+                                 text_align=ft.TextAlign.RIGHT, width=250,
+                                 input_filter=ft.InputFilter('^[0-9]*'))
     text_countdown_delay = TextField(label="Countdown", value="0", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
                                      width=150, disabled=True, suffix_text="second", color=ft.colors.LIGHT_BLUE, bgcolor=ft.colors.GREY_100)
 
@@ -328,7 +333,6 @@ def main(page: ft.Page):
         text_number_of_ping.disabled = False
         text_start_delay.disabled = False
         text_transponder_depth.disabled = False
-
 
         page.update()
 
@@ -407,17 +411,18 @@ def main(page: ft.Page):
     ping_controller.gps_controller.is_running = True
 
     def refresh_gps_values():
-        text_gps_date.value = str(ping_controller.gps_controller.nmea_data.date)
-        text_gps_time.value = str(ping_controller.gps_controller.nmea_data.time)
-        text_gps_lat.value = str(ping_controller.gps_controller.nmea_data.latitude)
-        text_gps_lon.value = str(ping_controller.gps_controller.nmea_data.longitude)
+        text_gps_date.value = ping_controller.gps_controller.nmea_data.date
+        text_gps_time.value = ping_controller.gps_controller.nmea_data.time
+        text_gps_lat.value = ping_controller.gps_controller.nmea_data.latitude
+        text_gps_lon.value = ping_controller.gps_controller.nmea_data.longitude
 
     while True:
         refresh_gps_values()
 
-        text_ping_count.value = str(ping_controller.ping_count)
+
         if ping_controller.is_running:
-            text_countdown_delay.value = str(ping_controller.count_down_delay)
+            text_ping_count.value = str(int(ping_controller.ping_count))
+            text_countdown_delay.value = str(int(ping_controller.count_down_delay)) or "----"
 
         if not ping_controller.is_running:
             button_stop.disabled = True
