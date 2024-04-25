@@ -22,7 +22,7 @@ from hydrophone_ping_gps_logger.transponder import TransponderController
 GARMIN_19XHVS_SAMPLING_INTERVAL = 1/20
 
 FIELD_NAME = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon"]
-FIELD_PADDING = [16, 11, 15, 12, 13]
+FIELD_PADDING = [21, 11, 15, 12, 13]
 
 @dataclass
 class PingRunParameters:
@@ -34,7 +34,7 @@ class PingRunParameters:
     start_delay_seconds: int = None
 
 
-class PingLoggerController:  # Fixme change name
+class PingLoggerController:
 
     def __init__(self):
 
@@ -42,7 +42,7 @@ class PingLoggerController:  # Fixme change name
         self.transponder_controller = TransponderController()
         self.ping_run_thread: threading.Thread = None
 
-        self.is_running = False  # FIXME CHANGE NAME
+        self.is_running = False
 
         self.ping_run_parameters: PingRunParameters = None
 
@@ -55,19 +55,19 @@ class PingLoggerController:  # Fixme change name
         self.output_filename: str = None
 
     def connect_gps(self, port, baudrate):
-        self.gps_controller.start(port=port, baudrate=baudrate)
+        self.gps_controller.connect(port=port, baudrate=baudrate)
 
     def disconnect_gps(self):
-        self.gps_controller.stop()
+        self.gps_controller.disconnect()
         self.gps_controller.nmea_data = NmeaData("", "", "", "")
         self.stop_ping_run()
 
-    def connect_transponder(self, port, baudrate=9600): #FIXME bauderate ???
-        self.transponder_controller.start(port=port, baudrate=baudrate)
+    def connect_transponder(self):
+        self.transponder_controller.connect()
 
     def disconnect_transponder(self):
-        self.transponder_controller.stop()
         self.stop_ping_run()
+        self.transponder_controller.disconnect()
 
     def start_ping_run(self, run_parameters: PingRunParameters):
         if self.is_running:
@@ -75,7 +75,6 @@ class PingLoggerController:  # Fixme change name
             return
 
         self.ping_run_parameters = run_parameters
-
 
         if self.gps_controller.is_connected and self.transponder_controller.is_connected:
             if self.gps_controller.is_running:
@@ -111,10 +110,10 @@ class PingLoggerController:  # Fixme change name
                 logging.info("ping run break")
                 break
 
-            self.write_data_to_ping_file()
-            # self.transponder_controller.ping() FIXME
-
-            self.ping_count += 1
+            if self.transponder_controller.ping():
+                self.write_data_to_ping_file()
+                self.ping_count += 1
+                # FIXME Raise Error
 
             if 0 < self.ping_run_parameters.number_of_pings <= self.ping_count:
                 self.is_running = False
@@ -137,9 +136,10 @@ class PingLoggerController:  # Fixme change name
             self.ping_run_thread.join()
 
     def init_ping_file(self):
-        timestamp = (self.gps_controller.nmea_data.date.replace("-", "") +
-         self.gps_controller.nmea_data.time.split("+")[0].replace(":", ""))
-
+        timestamp = (
+                self.gps_controller.nmea_data.date.replace("-", "")
+                + self.gps_controller.nmea_data.time.split("+")[0].replace(":", "")
+        )
 
         Path(self.ping_run_parameters.output_directory_path).mkdir(parents=True, exist_ok=True)
         self.output_filename = Path(self.ping_run_parameters.output_directory_path).joinpath(
@@ -157,8 +157,6 @@ class PingLoggerController:  # Fixme change name
 
     def write_data_to_ping_file(self):
         with open(self.output_filename, "a") as f:
-            print(self.gps_controller.nmea_data.date,
-                        self.gps_controller.nmea_data.time,)
             f.write(
                 format_data_line(
                     [
@@ -180,7 +178,7 @@ def format_data_line(data: list) -> str:
 
 
 def get_timestamp():
-    return datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+    return datetime.datetime.now().astimezone().strftime("%Y%m%dT%H%M%S%z")
 
 
 if __name__ == "__main__":

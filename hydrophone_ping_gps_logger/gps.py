@@ -39,18 +39,17 @@ class GpsController:
         self.nmea_msg: pynmea2.talker.TalkerSentence = None
         self.nmea_data = NmeaData("", "", "", "")
 
-    def start(self, port: str, baudrate: int):
+    def connect(self, port: str, baudrate: int):
         self.client = GpsClient(port=port, baudrate=baudrate)
 
         if self.client.connect() == 1:  # client connected started.
             self.is_connected = True
-            self.is_running = True
             self.run_thread = threading.Thread(
                 target=self.run, name="GPS", daemon=True
             )
             self.run_thread.start()
 
-    def stop(self):
+    def disconnect(self):
         self.is_running = False
         logging.info(f"GPS sampling stopped")
         if self.run_thread:
@@ -62,6 +61,8 @@ class GpsController:
         """
         To be run as a separate thread from the main thread.
         """
+        self.is_running = True
+
         while self.is_running:
 
             nmea_string = self.client.read()
@@ -72,8 +73,9 @@ class GpsController:
                 except pynmea2.nmea.ParseError: # FIXME
                     logging.warning("pynmea2 Parsing Error")
                     continue
-
+                #True heading HDT msg.heading
                 if msg.sentence_type == "RMC":  # GARMIN & SMALL
+
                     self.nmea_data.date = str(msg.datestamp)
                     self.nmea_data.time = str(msg.timestamp)
                     self.nmea_data.latitude = msg.lat + " " + msg.lat_dir

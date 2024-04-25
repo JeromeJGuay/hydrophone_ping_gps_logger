@@ -25,18 +25,17 @@ class TransponderController:
 
     def ping(self):
         if self.client.device.is_opened():
-            self.client.on_relay(0) # fixme need relay number
-            time.sleep(self.open_close_delay) #fIXME
+            self.client.on_relay(0)  # fixme need relay number
+            time.sleep(self.open_close_delay)
             self.client.off_relay(0)  # fixme need relay number
             return True
         else:
+            self.is_connected = False
             logging.warning("could not ping transponder not connected")
             return False
 
 
-
-
-class TransponderClient: # usb client ?
+class TransponderClient:
     usb_cfg_vendor_id = 0x16c0  # Should suit, if not check ID with a tool like USBDeview
     usb_cfg_device_id = 0x05DF  # Should suit, if not check ID with a tool like USBDeview
 
@@ -57,7 +56,6 @@ class TransponderClient: # usb client ?
             self.device = hid_device[0]
         else:
             self.device = None
-
 
     def open_device(self):
         if self.device is not None:
