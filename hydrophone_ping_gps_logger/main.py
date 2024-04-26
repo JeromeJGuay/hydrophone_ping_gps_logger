@@ -3,6 +3,10 @@ BaudRates: Garmin=4800, GNSS=9600, Ship=????
 
 TODO
 ---
+
++ REMOVE SCALE_FACTOR
++ PUT ROW IN COLUMN FOR PROPER RESIZE SPACING>
+
 + Integrate USB Trnansponder to test.
 + Better GUI scaling.
 + Augmenter les contrastes du GUI
@@ -26,41 +30,51 @@ import time
 from pathlib import Path
 
 import flet as ft
-from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider, TextButton, Container, Card
+from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider
 from flet_core.control_event import ControlEvent
 
 from hydrophone_ping_gps_logger.utils import list_serial_ports
 from hydrophone_ping_gps_logger.pingloggercontroller import PingLoggerController, PingRunParameters
 
-SCALE_FACTOR = .9
+# scales half as much on height vs width
+SCALE_FACTOR = 0  # in percent
 
-ICON_SIZE = 30 * SCALE_FACTOR
+SCALE_FACTOR /= 100
 
-FONT_SIZE_S = 14 * SCALE_FACTOR
-FONT_SIZE_M = 18 * SCALE_FACTOR
+ICON_SIZE = 30 * (1 + SCALE_FACTOR)
 
-FIELD_WIDTH_S = 150 * SCALE_FACTOR
-FIELD_WIDTH_M = 220 * SCALE_FACTOR
-FIELD_WIDTH_L = 400 * SCALE_FACTOR
+FONT_SIZE_S = 14 * (1 + SCALE_FACTOR)
+FONT_SIZE_M = 18 * (1 + SCALE_FACTOR)
 
-FIELD_HEIGHT_S = 60 * SCALE_FACTOR
-FIELD_HEIGHT_M = 70 * SCALE_FACTOR
+FIELD_WIDTH_S = 150 * (1 + SCALE_FACTOR)
+FIELD_WIDTH_M = 220 * (1 + SCALE_FACTOR)
+FIELD_WIDTH_L = 400 * (1 + SCALE_FACTOR)
 
-BUTTON_WIDTH_M = 150 * SCALE_FACTOR
-BUTTON_WIDTH_L = 220 * SCALE_FACTOR
-BUTTON_HEIGHT_M = 40 * SCALE_FACTOR
+FIELD_HEIGHT_S = 60 * (1 + SCALE_FACTOR / 2)
+FIELD_HEIGHT_M = 70 * (1 + SCALE_FACTOR / 2)
 
+BUTTON_WIDTH_M = 150
+BUTTON_WIDTH_L = 220
+BUTTON_HEIGHT_M = 40
+
+
+RUN_BUTTONS_WIDTH = 150
+RUN_BUTTONS_HEIGHT = 40
+BUTTON_SCALE = (1 + SCALE_FACTOR)
+
+WINDOW_WIDTH = 900 * (1 + SCALE_FACTOR)
+WINDOW_HEIGHT = 900 * (1 + SCALE_FACTOR / 2)
 
 VERSION = '1.0.0'
 
-SCALE = 1 # doesnt work ...
+SCALE = 1
 
 
 def main(page: ft.Page):
     ##### INIT PAGE ####
     page.title = "Ping GPS Logger"
-    page.window_width = 900 * SCALE_FACTOR
-    page.window_height = 900 * SCALE_FACTOR
+    page.window_width = WINDOW_WIDTH * SCALE
+    page.window_height = WINDOW_HEIGHT * SCALE
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.LIGHT  # DARK
 
@@ -261,36 +275,99 @@ def main(page: ft.Page):
         page.update()
 
 
-    text_ship_name = TextField(label="Ship Name", value="", text_size=FONT_SIZE_M,
-                               text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_M,
-                               height=FIELD_HEIGHT_M, scale=SCALE)
-    text_transponder_depth = TextField(label="Transponder depth", suffix_text=" meter", value="0",
-                                       text_size=FONT_SIZE_M, height=FIELD_HEIGHT_M,
-                                       text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_S,
-                                       input_filter=ft.InputFilter('^[0-9]*\.?[0-9]{0,2}'),
-                                       scale=SCALE)
-    text_directory_path = TextField(label="Target Directory", value="", text_size=FONT_SIZE_M,
-                                    text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_L, height=FIELD_HEIGHT_M,
-                                    disabled=True, color=ft.colors.LIGHT_BLUE,
-                                    bgcolor=ft.colors.GREY_50, scale=SCALE)
-    icon_button_directory = IconButton(icon=ft.icons.FOLDER, icon_size=ICON_SIZE, scale=SCALE)
+    text_ship_name = TextField(
+        label="Ship Name",
+        value="",
+        text_size=FONT_SIZE_M,
+        text_align=ft.TextAlign.RIGHT,
+        width=FIELD_WIDTH_M,
+        height=FIELD_HEIGHT_M,
+        #scale=SCALE
+    )
+    text_transponder_depth = TextField(
+        label="Transponder depth",
+        suffix_text=" meter",
+        value="0",
+        text_size=FONT_SIZE_M,
+        height=FIELD_HEIGHT_M,
+        text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_S,
+        input_filter=ft.InputFilter('^[0-9]*\.?[0-9]{0,2}'),
+        #scale=SCALE
+    )
+    text_directory_path = TextField(
+        label="Target Directory",
+        value="",
+        text_size=FONT_SIZE_M,
+        text_align=ft.TextAlign.RIGHT,
+        width=FIELD_WIDTH_L,
+        height=FIELD_HEIGHT_M,
+        disabled=True,
+        color=ft.colors.LIGHT_BLUE,
+        bgcolor=ft.colors.GREY_50,
+        #scale=SCALE
+    )
+    icon_button_directory = IconButton(
+        icon=ft.icons.FOLDER,
+        icon_size=ICON_SIZE,
+        #scale=SCALE
+    )
 
-    text_number_of_ping = TextField(label="Number Of Ping", value="0", text_size=FONT_SIZE_M,
-                                    text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_M, height=FIELD_HEIGHT_M,
-                                    input_filter=ft.InputFilter('^[0-9]*'), scale=SCALE)
-    text_ping_count = TextField(label="Ping Count", value="0", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
-                                width=FIELD_WIDTH_S, height=FIELD_HEIGHT_M, disabled=True, color=ft.colors.LIGHT_BLUE,
-                                bgcolor=ft.colors.GREY_50, scale=SCALE)
-    text_ping_interval = TextField(label="Ping Interval", value="1", suffix_text="second", text_size=FONT_SIZE_M,
-                                   text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_M, height=FIELD_HEIGHT_M,
-                                   input_filter=ft.InputFilter('^[0-9]*'), scale=SCALE)
-    text_start_delay = TextField(label="Start Delay", suffix_text=" second", value="0", text_size=FONT_SIZE_M,
-                                 text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_M, height=FIELD_HEIGHT_M,
-                                 input_filter=ft.InputFilter('^[0-9]*'), scale=SCALE)
-    text_countdown_delay = TextField(label="Countdown", value="0", text_size=FONT_SIZE_M, text_align=ft.TextAlign.RIGHT,
-                                     width=FIELD_WIDTH_S, height=FIELD_HEIGHT_M,
-                                     disabled=True, suffix_text="second", color=ft.colors.LIGHT_BLUE,
-                                     bgcolor=ft.colors.GREY_50, scale=SCALE)
+    text_number_of_ping = TextField(
+        label="Number Of Ping",
+        value="0",
+        text_size=FONT_SIZE_M,
+        text_align=ft.TextAlign.RIGHT,
+        width=FIELD_WIDTH_M,
+        height=FIELD_HEIGHT_M,
+        input_filter=ft.InputFilter('^[0-9]*'),
+        #scale=SCALE
+    )
+    text_ping_count = TextField(
+        label="Ping Count",
+        value="0",
+        text_size=FONT_SIZE_M,
+        text_align=ft.TextAlign.RIGHT,
+        width=FIELD_WIDTH_S,
+        height=FIELD_HEIGHT_M,
+        disabled=True,
+        color=ft.colors.LIGHT_BLUE,
+        bgcolor=ft.colors.GREY_50,
+        #scale=SCALE
+    )
+    text_ping_interval = TextField(
+        label="Ping Interval",
+        value="1",
+        suffix_text="second",
+        text_size=FONT_SIZE_M,
+        text_align=ft.TextAlign.RIGHT,
+        width=FIELD_WIDTH_M,
+        height=FIELD_HEIGHT_M,
+        input_filter=ft.InputFilter('^[0-9]*'),
+        #scale=SCALE
+    )
+    text_start_delay = TextField(
+        label="Start Delay",
+        suffix_text=" second",
+        value="0",
+        text_size=FONT_SIZE_M,
+        text_align=ft.TextAlign.RIGHT,
+        width=FIELD_WIDTH_M,
+        height=FIELD_HEIGHT_M,
+        input_filter=ft.InputFilter('^[0-9]*'),
+        #scale=SCALE
+    )
+    text_countdown_delay = TextField(
+        label="Countdown",
+        value="0",
+        text_size=FONT_SIZE_M,
+        text_align=ft.TextAlign.RIGHT,
+        width=FIELD_WIDTH_S,
+        height=FIELD_HEIGHT_M,
+        disabled=True, suffix_text="second",
+        color=ft.colors.LIGHT_BLUE,
+        bgcolor=ft.colors.GREY_50,
+        #scale=SCALE
+    )
 
 
     text_ship_name.on_change = validate_ping_run
@@ -350,7 +427,7 @@ def main(page: ft.Page):
     def stop_ping_run(e: ControlEvent):
 
         unpause_ping_run(e)
-        time.sleep(0.1) # this prevent threading bug with the pause event.
+        time.sleep(0.1)  # this prevent threading bug with the pause event.
 
         button_stop.disabled = True
         button_pause.disabled = True
@@ -371,47 +448,82 @@ def main(page: ft.Page):
     button_start = ElevatedButton(
         text="start",
         icon=ft.icons.PLAY_ARROW_ROUNDED,
-        width=BUTTON_WIDTH_M,
-        height=BUTTON_HEIGHT_M,
+        width=RUN_BUTTONS_WIDTH,
+        height=RUN_BUTTONS_HEIGHT,
         disabled=True,
         on_click=start_ping_run,
         bgcolor=ft.colors.GREEN_200,
-        scale=SCALE
+        #scale=(1 + SCALE_FACTOR)
     )
     button_pause = ElevatedButton(
-        text="Pause", width=BUTTON_WIDTH_M, height=BUTTON_HEIGHT_M,
-        disabled=True, on_click=pause_ping_run, bgcolor=ft.colors.ORANGE_200,
+        text="Pause",
+        width=RUN_BUTTONS_WIDTH,
+        height=RUN_BUTTONS_HEIGHT,
+        disabled=True,
+        on_click=pause_ping_run,
+        bgcolor=ft.colors.ORANGE_200,
         icon=ft.icons.PAUSE_ROUNDED,
-        scale=SCALE
+        #scale=(1 + SCALE_FACTOR)
     )
     button_stop = ElevatedButton(
-        text="Stop", width=BUTTON_WIDTH_M, height=BUTTON_HEIGHT_M,
-        disabled=True, on_click=stop_ping_run, bgcolor=ft.colors.RED_200,
+        text="Stop",
+        width=BUTTON_WIDTH_M,
+        height=BUTTON_HEIGHT_M,
+        disabled=True,
+        on_click=stop_ping_run,
+        bgcolor=ft.colors.RED_200,
         icon=ft.icons.STOP_ROUNDED,
-        scale=SCALE
+        #scale=(1 + SCALE_FACTOR)
+    )
+
+    text_title = Text(
+        value="Ping GPS Logger",
+        theme_style=ft.TextThemeStyle.DISPLAY_SMALL,
+        weight=ft.FontWeight.W_500,
+        #scale=SCALE
+    )
+    text_version = Text(
+        f"Version: {VERSION}  ",
+        theme_style=ft.TextThemeStyle.BODY_SMALL,
+        weight=ft.FontWeight.W_500,
+        #scale=SCALE
     )
 
 
     #### Layout ####
 
+    def add_divier():
+        return Divider(height=2*SCALE, thickness=2*SCALE, leading_indent=30, trailing_indent=30)
+
+
+    layout_title = Row(
+        [text_title, text_version],
+        alignment=ft.MainAxisAlignment.CENTER,
+        scale=SCALE
+    )
+
     layout_gps = Row(
         [button_refresh_comports, dropdown_gps_port,  dropdown_gps_baudrate, button_connect_gps],
-        alignment=ft.MainAxisAlignment.CENTER)
+        alignment=ft.MainAxisAlignment.CENTER,
+        scale=SCALE
+    )
 
     page.add(
-        Row([
-            Text("Ping GPS Logger", theme_style=ft.TextThemeStyle.DISPLAY_SMALL, weight=ft.FontWeight.W_500,
-                 scale=SCALE),
-            Text(F"Version: {VERSION}  ", theme_style=ft.TextThemeStyle.BODY_SMALL, weight=ft.FontWeight.W_500,
-                 scale=SCALE)
-        ],
-            alignment=ft.MainAxisAlignment.CENTER),
-        Divider(height=2, thickness=2, leading_indent=30, trailing_indent=30),
+        layout_title,
+        add_divier(),
         layout_gps,
-        Row([text_gps_date, text_gps_time, text_gps_lat, text_gps_lon], alignment=ft.MainAxisAlignment.CENTER),
-        Divider(height=2, thickness=2, leading_indent=30, trailing_indent=30),
-        Row([button_connect_transponder, icon_transponder_status], alignment=ft.MainAxisAlignment.CENTER),
-        Divider(height=2, thickness=2, leading_indent=30, trailing_indent=30),
+        Row(
+            [text_gps_date, text_gps_time, text_gps_lat, text_gps_lon],
+            alignment=ft.MainAxisAlignment.CENTER,
+            scale=SCALE
+        ),
+        add_divier(),
+        Row(
+            [button_connect_transponder, icon_transponder_status],
+            alignment=ft.MainAxisAlignment.CENTER,
+            scale=SCALE
+        ),
+        add_divier(),
         Row(
             controls=[
                 Column(
@@ -420,9 +532,11 @@ def main(page: ft.Page):
                         Row([text_ship_name, text_transponder_depth], alignment=ft.MainAxisAlignment.CENTER),
                     ], alignment=ft.MainAxisAlignment.CENTER
                 )
-            ], alignment=ft.MainAxisAlignment.CENTER
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            scale=SCALE
         ),
-        Divider(height=2, thickness=2, leading_indent=30, trailing_indent=30),
+        add_divier(),
         Row(
             controls=[
                 Column(
@@ -434,11 +548,17 @@ def main(page: ft.Page):
                     alignment=ft.MainAxisAlignment.CENTER
                 )
             ],
-            alignment=ft.MainAxisAlignment.CENTER
+            alignment=ft.MainAxisAlignment.CENTER,
+            scale=SCALE
         ),
-        Divider(height=2, thickness=2, leading_indent=30, trailing_indent=30),
-        Row([button_start, button_pause, button_stop], alignment=ft.MainAxisAlignment.CENTER),
+        add_divier(),
+        Row(
+            [button_start, button_pause, button_stop],
+            alignment=ft.MainAxisAlignment.CENTER,
+            scale=SCALE
+        )
     )
+
 
     def refresh_gps_values():
         text_gps_date.value = ping_controller.gps_controller.nmea_data.date
