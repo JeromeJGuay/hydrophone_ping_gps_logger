@@ -24,14 +24,23 @@ class TransponderController:
         self.is_connected = False
 
     def ping(self):
-        if self.client.device.is_opened():
-            self.client.on_relay(0)  # fixme need relay number
-            time.sleep(self.open_close_delay)
-            self.client.off_relay(0)  # fixme need relay number
-            return True
-        else:
-            self.is_connected = False
-            logging.warning("could not ping transponder not connected")
+        try:
+            if self.client.device.is_opened():
+                self.client.on_relay(1)  # 1 or 2 ?
+                #self.client.on_all()
+                time.sleep(self.open_close_delay)
+                #@self.client.off_all()
+                self.client.off_relay(1)  # 1 or 2 ?
+                logging.debug("Transponder Pinged")
+                return True
+            else:
+                self.is_connected = False
+                logging.warning("Could not ping transponder not connected")
+                return False
+        except Exception as e:
+            logging.error(f"error: {e}")
+            logging.error("Transponder Pinged failed")
+            self.disconnect()
             return False
 
 

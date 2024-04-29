@@ -14,15 +14,14 @@ from dataclasses import dataclass
 
 from pathlib import Path
 
-from hydrophone_ping_gps_logger import gps
-from hydrophone_ping_gps_logger.gps import GpsController, NmeaData
+from hydrophone_ping_gps_logger.gps import GpsController
 from hydrophone_ping_gps_logger.transponder import TransponderController
 
 
 GARMIN_19XHVS_SAMPLING_INTERVAL = 1/20
 
-FIELD_NAME = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon"]
-FIELD_PADDING = [21, 11, 15, 12, 13]
+FIELD_NAME = ["timestamp", "gsp_date", "gps_time", "gps_lat", "gps_lon", "heading"]
+FIELD_PADDING = [21, 11, 15, 12, 13, 8] # review heading FIXME
 
 @dataclass
 class PingRunParameters:
@@ -59,7 +58,6 @@ class PingLoggerController:
 
     def disconnect_gps(self):
         self.gps_controller.disconnect()
-        self.gps_controller.nmea_data = NmeaData("", "", "", "")
         self.stop_ping_run()
 
     def connect_transponder(self):
@@ -82,6 +80,8 @@ class PingLoggerController:
                 self.is_running = True
 
                 self.init_ping_file()
+
+                time.sleep(0.1)
 
                 self.ping_run_thread = threading.Thread(target=self._ping_run, name="ping_thread", daemon=True)
                 self.ping_run_thread.start()
@@ -107,16 +107,20 @@ class PingLoggerController:
 
             if not self.gps_controller.is_running:
                 self.is_running = False
-                logging.info("ping run break")
+                logging.info("Ping Run Break GPS Disconnected")
                 break
 
             if self.transponder_controller.ping():
                 self.write_data_to_ping_file()
                 self.ping_count += 1
-                # FIXME Raise Error
+            else:
+                self.is_running = False
+                logging.info("Ping Run Break Ping Failed")
+                break # FIXME Raise Error
 
             if 0 < self.ping_run_parameters.number_of_pings <= self.ping_count:
                 self.is_running = False
+                logging.info("Ping Run Break Ping Count Reach")
                 break
 
             time.sleep(self.ping_run_parameters.ping_interval)
@@ -134,6 +138,7 @@ class PingLoggerController:
         self.ping_count = 0
         if self.ping_run_thread:
             self.ping_run_thread.join()
+        self.unpause_ping_run()
 
     def init_ping_file(self):
         timestamp = (
@@ -165,6 +170,7 @@ class PingLoggerController:
                         self.gps_controller.nmea_data.time,
                         self.gps_controller.nmea_data.latitude,
                         self.gps_controller.nmea_data.longitude,
+                        self.gps_controller.nmea_data.heading,
                     ]
 
                 )+"\n"

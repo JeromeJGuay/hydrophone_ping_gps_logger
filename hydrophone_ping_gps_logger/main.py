@@ -219,12 +219,22 @@ def main(page: ft.Page):
         disabled=True,
         scale=SCALE
     )
+    text_gps_heading = TextField(
+        value="",
+        label="heading",
+        width=FIELD_WIDTH_S,
+        height=FIELD_HEIGHT_S,
+        text_size=FONT_SIZE_S,
+        color=ft.colors.LIGHT_BLUE,
+        bgcolor=ft.colors.GREY_50,
+        disabled=True,
+        scale=SCALE
+    )
 
     ###### Transponder ######
 
     def connect_transponder(e: ControlEvent):
         ping_controller.connect_transponder()
-
 
     button_connect_transponder = ElevatedButton(
         text="Connect transponder",
@@ -382,7 +392,7 @@ def main(page: ft.Page):
 
     ##### START/STOP RUN #####
 
-    def start_ping_run(e: ControlEvent):
+    def start_ping_run(e: ControlEvent=None):
         ping_controller.start_ping_run(
             PingRunParameters(
                 output_directory_path=text_directory_path.value,
@@ -424,15 +434,21 @@ def main(page: ft.Page):
 
         page.update()
 
-    def stop_ping_run(e: ControlEvent):
+    def stop_ping_run(e: ControlEvent=None):
 
-        unpause_ping_run(e)
-        time.sleep(0.1)  # this prevent threading bug with the pause event.
+        #unpause_ping_run(e)
+        #time.sleep(0.1)  # this prevent threading bug with the pause event.
 
-        button_stop.disabled = True
-        button_pause.disabled = True
+        not_running_state_run()
 
         validate_ping_run(e)
+
+
+        ping_controller.stop_ping_run()
+
+    def not_running_state_run():
+        button_stop.disabled = True
+        button_pause.disabled = True
 
         text_ship_name.disabled = False
         icon_button_directory.disabled = False
@@ -442,8 +458,6 @@ def main(page: ft.Page):
         text_transponder_depth.disabled = False
 
         page.update()
-
-        ping_controller.stop_ping_run()
 
     button_start = ElevatedButton(
         text="start",
@@ -507,19 +521,22 @@ def main(page: ft.Page):
         alignment=ft.MainAxisAlignment.CENTER,
         scale=SCALE
     )
+    layout_nmea_data = Row(
+            [text_gps_date, text_gps_time, text_gps_lat, text_gps_lon, text_gps_heading],
+            alignment=ft.MainAxisAlignment.CENTER,
+            scale=SCALE
+        )
 
     page.add(
         layout_title,
         add_divier(),
         layout_gps,
-        Row(
-            [text_gps_date, text_gps_time, text_gps_lat, text_gps_lon],
-            alignment=ft.MainAxisAlignment.CENTER,
-            scale=SCALE
-        ),
+        layout_nmea_data,
         add_divier(),
         Row(
-            [button_connect_transponder, icon_transponder_status],
+            [Text("Transponder Status", theme_style=ft.TextThemeStyle.BODY_LARGE,
+                  weight=ft.FontWeight.W_500)
+, icon_transponder_status],
             alignment=ft.MainAxisAlignment.CENTER,
             scale=SCALE
         ),
@@ -559,38 +576,45 @@ def main(page: ft.Page):
         )
     )
 
-
     def refresh_gps_values():
         text_gps_date.value = ping_controller.gps_controller.nmea_data.date
         text_gps_time.value = ping_controller.gps_controller.nmea_data.time
         text_gps_lat.value = ping_controller.gps_controller.nmea_data.latitude
         text_gps_lon.value = ping_controller.gps_controller.nmea_data.longitude
+        text_gps_heading.value = ping_controller.gps_controller.nmea_data.heading
+        text_ping_count.value = str(int(ping_controller.ping_count))
+        #page.update()
 
     while True:
         refresh_gps_values()
+
+        if ping_controller.is_running:
+            text_ping_count.value = str(int(ping_controller.ping_count))
+            text_countdown_delay.value = str(int(ping_controller.count_down_delay)) or "----"
+            #page.update()
+        else:
+            not_running_state_run()
+            validate_ping_run()
 
         if not ping_controller.transponder_controller.is_connected:
             icon_transponder_status.icon = ft.icons.CIRCLE_OUTLINED
             icon_transponder_status.icon_color = ft.colors.RED_200
             button_connect_transponder.disabled = False
+            ping_controller.connect_transponder()
         else:
             icon_transponder_status.icon = ft.icons.CIRCLE
             icon_transponder_status.icon_color = ft.colors.GREEN_200
             button_connect_transponder.disabled = True
-
-        if ping_controller.is_running:
-            text_ping_count.value = str(int(ping_controller.ping_count))
-            text_countdown_delay.value = str(int(ping_controller.count_down_delay)) or "----"
-
-        if not ping_controller.is_running:
-            validate_ping_run()
 
         page.update()
         time.sleep(0.05)
 
 
 import logging
+import sys
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 ft.app(target=main)
+
+sys.exit()
