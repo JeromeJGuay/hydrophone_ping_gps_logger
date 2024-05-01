@@ -4,10 +4,10 @@ BaudRates: Garmin=4800, GNSS=9600, Ship=????
 TODO
 ---
 
-+ REMOVE SCALE_FACTOR
-+ PUT ROW IN COLUMN FOR PROPER RESIZE SPACING>
++ Pause-unpause bugs again.
++ Close relay safety (on exit)
 
-+ Integrate USB Trnansponder to test.
++ Integrated USB Transponder to test.
 + Better GUI scaling.
 + Augmenter les contrastes du GUI
 + Option to ping even without GPS.
@@ -25,16 +25,23 @@ TODO
 
 """
 
+import logging
+import sys
 import time
 
 from pathlib import Path
 
 import flet as ft
-from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider
+from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider, Checkbox
 from flet_core.control_event import ControlEvent
 
 from hydrophone_ping_gps_logger.utils import list_serial_ports
 from hydrophone_ping_gps_logger.pingloggercontroller import PingLoggerController, PingRunParameters
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 
 # scales half as much on height vs width
 SCALE_FACTOR = 0  # in percent
@@ -67,7 +74,7 @@ WINDOW_HEIGHT = 900 * (1 + SCALE_FACTOR / 2)
 
 VERSION = '1.0.0'
 
-SCALE = 1
+SCALE = .9
 
 
 def main(page: ft.Page):
@@ -79,8 +86,8 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT  # DARK
 
     ###### BackEnd ######
+    global ping_controller
     ping_controller = PingLoggerController()
-
     ping_controller.transponder_controller.connect()
 
     ###### CONNECT GPS FIELD ######
@@ -176,6 +183,8 @@ def main(page: ft.Page):
         scale=SCALE
     )
 
+    checkbox_bypass_gps = Checkbox(adaptive=True, label="Bypass GPS", value=False)
+
     text_gps_date = TextField(
         value="", label="date",
         width=FIELD_WIDTH_S,
@@ -251,7 +260,6 @@ def main(page: ft.Page):
         disabled=True
     )
 
-
     ###### RUN SETTING FIELDS ######
     def pick_directory_result(e: ft.FilePickerResultEvent):
         text_directory_path.value = e.path
@@ -276,9 +284,11 @@ def main(page: ft.Page):
                  text_number_of_ping.value,
                  text_start_delay.value,
                  text_transponder_depth.value])
-                and ping_controller.gps_controller.is_running
+                and ping_controller.gps_controller.is_running or checkbox_bypass_gps.value
                 and ping_controller.transponder_controller.is_connected):
-            button_start.disabled = False
+
+            if not (text_directory_path.value == ""):
+                button_start.disabled = False
         else:
             button_start.disabled = True
 
@@ -287,7 +297,7 @@ def main(page: ft.Page):
 
     text_ship_name = TextField(
         label="Ship Name",
-        value="",
+        value="Leim",
         text_size=FONT_SIZE_M,
         text_align=ft.TextAlign.RIGHT,
         width=FIELD_WIDTH_M,
@@ -346,7 +356,7 @@ def main(page: ft.Page):
     )
     text_ping_interval = TextField(
         label="Ping Interval",
-        value="1",
+        value="15",
         suffix_text="second",
         text_size=FONT_SIZE_M,
         text_align=ft.TextAlign.RIGHT,
@@ -379,6 +389,7 @@ def main(page: ft.Page):
         #scale=SCALE
     )
 
+    text_directory_path.value = None
 
     text_ship_name.on_change = validate_ping_run
     text_directory_path.on_change = validate_ping_run
@@ -393,6 +404,7 @@ def main(page: ft.Page):
     ##### START/STOP RUN #####
 
     def start_ping_run(e: ControlEvent=None):
+        print(text_directory_path.value)
         ping_controller.start_ping_run(
             PingRunParameters(
                 output_directory_path=text_directory_path.value,
@@ -401,13 +413,15 @@ def main(page: ft.Page):
                 ping_interval=float(text_ping_interval.value),
                 number_of_pings=int(text_number_of_ping.value),
                 start_delay_seconds=int(text_start_delay.value)
-            )
+            ),
+            bypass_gps=checkbox_bypass_gps.value
         )
         if ping_controller.is_running:
             button_start.disabled = True
             button_pause.disabled = False
             button_stop.disabled = False
 
+            checkbox_bypass_gps.disabled = True
             text_ship_name.disabled = True
             icon_button_directory.disabled = True
             text_ping_interval.disabled = True
@@ -436,7 +450,7 @@ def main(page: ft.Page):
 
     def stop_ping_run(e: ControlEvent=None):
 
-        #unpause_ping_run(e)
+        unpause_ping_run(e)
         #time.sleep(0.1)  # this prevent threading bug with the pause event.
 
         not_running_state_run()
@@ -450,6 +464,7 @@ def main(page: ft.Page):
         button_stop.disabled = True
         button_pause.disabled = True
 
+        checkbox_bypass_gps.disabled = False
         text_ship_name.disabled = False
         icon_button_directory.disabled = False
         text_ping_interval.disabled = False
@@ -517,7 +532,7 @@ def main(page: ft.Page):
     )
 
     layout_gps = Row(
-        [button_refresh_comports, dropdown_gps_port,  dropdown_gps_baudrate, button_connect_gps],
+        [button_refresh_comports, dropdown_gps_port,  dropdown_gps_baudrate, button_connect_gps, checkbox_bypass_gps],
         alignment=ft.MainAxisAlignment.CENTER,
         scale=SCALE
     )
@@ -596,6 +611,9 @@ def main(page: ft.Page):
             not_running_state_run()
             validate_ping_run()
 
+   #     if ping_controller.transponder_controller.is_connected:
+   #         ping_controller.transponder_controller.check_connection()
+
         if not ping_controller.transponder_controller.is_connected:
             icon_transponder_status.icon = ft.icons.CIRCLE_OUTLINED
             icon_transponder_status.icon_color = ft.colors.RED_200
@@ -610,11 +628,13 @@ def main(page: ft.Page):
         time.sleep(0.05)
 
 
-import logging
-import sys
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
-ft.app(target=main)
-
-sys.exit()
+try:
+    ft.app(target=main)
+finally:
+    try:
+        ping_controller.transponder_controller.client.close_device()
+    except Exception:
+        pass
+    finally:
+        sys.exit()

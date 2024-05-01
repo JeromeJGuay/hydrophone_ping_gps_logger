@@ -4,10 +4,16 @@ import pywinusb.hid as hid
 
 
 class TransponderController:
-    open_close_delay = 0.01
+    open_close_delay = 1
 
     def __init__(self):
         self.client = TransponderClient()
+        self.is_connected = False
+
+    def check_connection(self):
+        if self.client.device is not None:
+            if not self.client.device.is_active():
+                return
         self.is_connected = False
 
     def connect(self):
@@ -26,13 +32,14 @@ class TransponderController:
     def ping(self):
         try:
             if self.client.device.is_opened():
-                self.client.on_relay(1)  # 1 or 2 ?
-                #self.client.on_all()
-                time.sleep(self.open_close_delay)
-                #@self.client.off_all()
-                self.client.off_relay(1)  # 1 or 2 ?
-                logging.debug("Transponder Pinged")
-                return True
+                if self.client.on_all():
+                    time.sleep(self.open_close_delay)
+                    self.client.off_all()
+                    logging.debug("Transponder Pinged")
+                    return True
+                else:
+                    logging.warning("Relay didn't close.")
+                    return False
             else:
                 self.is_connected = False
                 logging.warning("Could not ping transponder not connected")
@@ -85,6 +92,7 @@ class TransponderClient:
     def close_device(self):
         if self.device.is_active():
             if self.device.is_opened():
+                self.off_all()
                 self.device.close()
                 return True
             else:
@@ -155,24 +163,3 @@ class TransponderClient:
         else:
             self.last_row_status = self.report.get()
         return self.last_row_status
-
-
-if __name__ == "__main__":
-    t = TransponderClient()
-    t.get_device()
-    t.open_device()
-
-    print(" --- read_status_row: {}".format(t.read_status_row()))
-    print("TURN OFF ALL: {}".format(t.off_all()))
-
-    print("TURN ON 1: {} ".format(t.on_relay(1)))
-    print("READ STATE 1: {}".format(t.read_relay_status(1)))
-    time.sleep(1)
-    print("TURN OFF 1: {} ".format(t.off_relay(1)))
-    print("READ STATE 1: {}".format(t.read_relay_status(1)))
-    time.sleep(1)
-
-    print("TURN ON ALL: {}".format(t.on_all()))
-    time.sleep(1)
-    print("TURN OFF ALL: {}".format(t.off_all()))
-

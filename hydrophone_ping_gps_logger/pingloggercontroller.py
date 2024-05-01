@@ -52,6 +52,7 @@ class PingLoggerController:
         self.ping_paused_event.set()
 
         self.output_filename: str = None
+        self.bypass_gps = False
 
     def connect_gps(self, port, baudrate):
         self.gps_controller.connect(port=port, baudrate=baudrate)
@@ -67,26 +68,29 @@ class PingLoggerController:
         self.stop_ping_run()
         self.transponder_controller.disconnect()
 
-    def start_ping_run(self, run_parameters: PingRunParameters):
+    def start_ping_run(self, run_parameters: PingRunParameters, bypass_gps=False):
+
+        self.bypass_gps = bypass_gps
+
         if self.is_running:
             logging.warning("Already running")
             return
 
         self.ping_run_parameters = run_parameters
 
-        if self.gps_controller.is_connected and self.transponder_controller.is_connected:
-            if self.gps_controller.is_running:
+        if ((self.gps_controller.is_running or self.bypass_gps)
+                and self.transponder_controller.is_connected):
 
-                self.is_running = True
+            self.is_running = True
 
-                self.init_ping_file()
+            self.init_ping_file()
 
-                time.sleep(0.1)
+            time.sleep(0.1)
 
-                self.ping_run_thread = threading.Thread(target=self._ping_run, name="ping_thread", daemon=True)
-                self.ping_run_thread.start()
+            self.ping_run_thread = threading.Thread(target=self._ping_run, name="ping_thread", daemon=True)
+            self.ping_run_thread.start()
         else:
-            logging.warning("Devices not connected. Ping Run not started")
+            logging.warning("Devices (GPS or transponder) not connected. Ping Run not started")
 
     def _ping_run(self):
         self.ping_count = 0
@@ -105,10 +109,11 @@ class PingLoggerController:
                 self.ping_paused_event.wait()
                 logging.info("Enter ping run wait released")
 
-            if not self.gps_controller.is_running:
-                self.is_running = False
-                logging.info("Ping Run Break GPS Disconnected")
-                break
+            # if self.bypass_gps:
+            #     if (not self.gps_controller.is_running):
+            #         self.is_running = False
+            #         logging.info("Ping Run Break GPS Disconnected")
+            #         break
 
             if self.transponder_controller.ping():
                 self.write_data_to_ping_file()
@@ -134,17 +139,22 @@ class PingLoggerController:
         logging.info("pause event set")
 
     def stop_ping_run(self):
+        self.unpause_ping_run()
+        time.sleep(0.1)
         self.is_running = False
         self.ping_count = 0
         if self.ping_run_thread:
             self.ping_run_thread.join()
-        self.unpause_ping_run()
+
 
     def init_ping_file(self):
         timestamp = (
                 self.gps_controller.nmea_data.date.replace("-", "")
                 + self.gps_controller.nmea_data.time.split("+")[0].replace(":", "")
         )
+
+        if timestamp == "": # if no gps use the computer time.
+            timestamp = get_timestamp()
 
         Path(self.ping_run_parameters.output_directory_path).mkdir(parents=True, exist_ok=True)
         self.output_filename = Path(self.ping_run_parameters.output_directory_path).joinpath(
