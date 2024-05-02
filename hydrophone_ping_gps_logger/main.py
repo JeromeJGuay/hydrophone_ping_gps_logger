@@ -35,8 +35,12 @@ import flet as ft
 from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider, Checkbox
 from flet_core.control_event import ControlEvent
 
-from hydrophone_ping_gps_logger.utils import list_serial_ports
-from hydrophone_ping_gps_logger.pingloggercontroller import PingLoggerController, PingRunParameters
+try:
+    from hydrophone_ping_gps_logger.utils import list_serial_ports
+    from hydrophone_ping_gps_logger.pingloggercontroller import PingLoggerController, PingRunParameters
+except ImportError:
+    from utils import list_serial_ports
+    from pingloggercontroller import PingLoggerController, PingRunParameters
 
 
 logger = logging.getLogger(__name__)
@@ -44,21 +48,21 @@ logging.basicConfig(level=logging.INFO)
 
 
 # scales half as much on height vs width
-SCALE_FACTOR = 0  # in percent
+SCALE_FACTOR = -20  # in percent
 
 SCALE_FACTOR /= 100
 
 ICON_SIZE = 30 * (1 + SCALE_FACTOR)
 
-FONT_SIZE_S = 14 * (1 + SCALE_FACTOR)
+FONT_SIZE_S = 13 * (1 + SCALE_FACTOR)
 FONT_SIZE_M = 18 * (1 + SCALE_FACTOR)
 
 FIELD_WIDTH_S = 150 * (1 + SCALE_FACTOR)
 FIELD_WIDTH_M = 220 * (1 + SCALE_FACTOR)
 FIELD_WIDTH_L = 400 * (1 + SCALE_FACTOR)
 
-FIELD_HEIGHT_S = 60 * (1 + SCALE_FACTOR / 2)
-FIELD_HEIGHT_M = 70 * (1 + SCALE_FACTOR / 2)
+FIELD_HEIGHT_S = 55 * (1 + SCALE_FACTOR / 2)
+FIELD_HEIGHT_M = 65 * (1 + SCALE_FACTOR / 2)
 
 BUTTON_WIDTH_M = 150
 BUTTON_WIDTH_L = 220
@@ -66,15 +70,15 @@ BUTTON_HEIGHT_M = 40
 
 
 RUN_BUTTONS_WIDTH = 150
-RUN_BUTTONS_HEIGHT = 40
+RUN_BUTTONS_HEIGHT = 35
 BUTTON_SCALE = (1 + SCALE_FACTOR)
 
 WINDOW_WIDTH = 900 * (1 + SCALE_FACTOR)
-WINDOW_HEIGHT = 900 * (1 + SCALE_FACTOR / 2)
+WINDOW_HEIGHT = 900 * (1 + SCALE_FACTOR / 4)
 
 VERSION = '1.0.0'
 
-SCALE = .9
+SCALE = 1 * (1 + SCALE_FACTOR)
 
 
 def main(page: ft.Page):
@@ -84,6 +88,9 @@ def main(page: ft.Page):
     page.window_height = WINDOW_HEIGHT * SCALE
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.LIGHT  # DARK
+
+    page.scroll = True
+
 
     ###### BackEnd ######
     global ping_controller
@@ -311,7 +318,7 @@ def main(page: ft.Page):
         text_size=FONT_SIZE_M,
         height=FIELD_HEIGHT_M,
         text_align=ft.TextAlign.RIGHT, width=FIELD_WIDTH_S,
-        input_filter=ft.InputFilter('^[0-9]*\.?[0-9]{0,2}'),
+        input_filter=ft.InputFilter(r'^[0-9]*\.?[0-9]{0,2}'),
         #scale=SCALE
     )
     text_directory_path = TextField(
@@ -522,7 +529,7 @@ def main(page: ft.Page):
     #### Layout ####
 
     def add_divier():
-        return Divider(height=2*SCALE, thickness=2*SCALE, leading_indent=30, trailing_indent=30)
+        return Divider(height=1, thickness=1, leading_indent=30, trailing_indent=30)
 
 
     layout_title = Row(
@@ -542,53 +549,61 @@ def main(page: ft.Page):
             scale=SCALE
         )
 
+    main_layout = Column(
+        [
+            layout_title,
+            add_divier(),
+            layout_gps,
+            layout_nmea_data,
+            add_divier(),
+            Row(
+                [Text("Transponder Status", theme_style=ft.TextThemeStyle.BODY_LARGE,
+                      weight=ft.FontWeight.W_500)
+                    , icon_transponder_status],
+                alignment=ft.MainAxisAlignment.CENTER,
+                scale=SCALE
+            ),
+            add_divier(),
+            Row(
+                controls=[
+                    Column(
+                        [
+                            Row([text_directory_path, icon_button_directory], alignment=ft.MainAxisAlignment.CENTER),
+                            Row([text_ship_name, text_transponder_depth], alignment=ft.MainAxisAlignment.CENTER),
+                        ], alignment=ft.MainAxisAlignment.CENTER
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                scale=SCALE
+            ),
+            add_divier(),
+            Row(
+                controls=[
+                    Column(
+                        [
+                            text_ping_interval,
+                            Row([text_number_of_ping, text_ping_count]),
+                            Row([text_start_delay, text_countdown_delay]),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                scale=SCALE
+            ),
+            add_divier(),
+            Row(
+                [button_start, button_pause, button_stop],
+                alignment=ft.MainAxisAlignment.CENTER,
+                scale=SCALE
+            )
+
+        ],
+        alignment=ft.MainAxisAlignment.CENTER,
+        scale=1
+    )
     page.add(
-        layout_title,
-        add_divier(),
-        layout_gps,
-        layout_nmea_data,
-        add_divier(),
-        Row(
-            [Text("Transponder Status", theme_style=ft.TextThemeStyle.BODY_LARGE,
-                  weight=ft.FontWeight.W_500)
-, icon_transponder_status],
-            alignment=ft.MainAxisAlignment.CENTER,
-            scale=SCALE
-        ),
-        add_divier(),
-        Row(
-            controls=[
-                Column(
-                    [
-                        Row([text_directory_path, icon_button_directory], alignment=ft.MainAxisAlignment.CENTER),
-                        Row([text_ship_name, text_transponder_depth], alignment=ft.MainAxisAlignment.CENTER),
-                    ], alignment=ft.MainAxisAlignment.CENTER
-                )
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            scale=SCALE
-        ),
-        add_divier(),
-        Row(
-            controls=[
-                Column(
-                    [
-                        text_ping_interval,
-                        Row([text_number_of_ping, text_ping_count]),
-                        Row([text_start_delay, text_countdown_delay]),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER
-                )
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            scale=SCALE
-        ),
-        add_divier(),
-        Row(
-            [button_start, button_pause, button_stop],
-            alignment=ft.MainAxisAlignment.CENTER,
-            scale=SCALE
-        )
+        main_layout
     )
 
     def refresh_gps_values():
@@ -632,6 +647,7 @@ def main(page: ft.Page):
 try:
     ft.app(target=main)
 finally:
+    logger.info("App Closed")
     try:
         ping_controller.transponder_controller.client.close_device()
     except Exception:

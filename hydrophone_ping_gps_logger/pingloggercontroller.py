@@ -14,8 +14,12 @@ from dataclasses import dataclass
 
 from pathlib import Path
 
-from hydrophone_ping_gps_logger.gps import GpsController
-from hydrophone_ping_gps_logger.transponder import TransponderController
+try:
+    from hydrophone_ping_gps_logger.gps import GpsController
+    from hydrophone_ping_gps_logger.transponder import TransponderController
+except ImportError:
+    from gps import GpsController
+    from transponder import TransponderController
 
 
 GARMIN_19XHVS_SAMPLING_INTERVAL = 1/20
@@ -195,42 +199,3 @@ def format_data_line(data: list) -> str:
 
 def get_timestamp():
     return datetime.datetime.now().astimezone().strftime("%Y%m%dT%H%M%S%z")
-
-
-if __name__ == "__main__":
-    # garmin 4800
-    # GNSS 9600
-    # Ship ??
-
-    from utils import list_serial_ports
-
-    d = list_serial_ports()
-
-    logger = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.INFO)
-
-    m = PingLoggerController()
-    m.connect_gps(
-        port="COM4",
-        baudrate=4800
-    ) # Garmin
-
-    m.connect_transponder(
-        port="",
-        baudrate=9600
-    )
-
-    prp = PingRunParameters(
-        output_directory_path="./",
-        ship_name="Leim",
-        transponder_depth=1,
-        ping_interval=1/20,
-        number_of_pings=20,
-        start_delay_seconds=10
-    )
-
-    m.start_ping_run(run_parameters=prp)
-
-
-
-
