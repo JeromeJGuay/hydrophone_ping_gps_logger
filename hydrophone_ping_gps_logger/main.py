@@ -35,6 +35,8 @@ import flet as ft
 from flet import TextField, ElevatedButton, Text, Row, Column, IconButton, Dropdown, Divider, Checkbox
 from flet_core.control_event import ControlEvent
 
+import screeninfo
+
 try:
     from hydrophone_ping_gps_logger.utils import list_serial_ports
     from hydrophone_ping_gps_logger.pingloggercontroller import PingLoggerController, PingRunParameters
@@ -44,11 +46,17 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
+DEFAULT_MONITOR_WIDTH = 1920
+DEFAULT_MONITOR_HEIGHT = 1080
+
+monitors = screeninfo.get_monitors()
+HEIGHT_SCALING = (monitors[0].height - DEFAULT_MONITOR_HEIGHT) / DEFAULT_MONITOR_HEIGHT
+WIDTH_SCALING = (monitors[0].width - DEFAULT_MONITOR_WIDTH) / DEFAULT_MONITOR_WIDTH
 
 # scales half as much on height vs width
-SCALE_FACTOR = -20  # in percent
+SCALE_FACTOR = max([HEIGHT_SCALING, WIDTH_SCALING])  # in percent
 
 SCALE_FACTOR /= 100
 
@@ -74,7 +82,7 @@ RUN_BUTTONS_HEIGHT = 35
 BUTTON_SCALE = (1 + SCALE_FACTOR)
 
 WINDOW_WIDTH = 900 * (1 + SCALE_FACTOR)
-WINDOW_HEIGHT = 900 * (1 + SCALE_FACTOR / 4)
+WINDOW_HEIGHT = 800 * (1 + SCALE_FACTOR / 4)
 
 VERSION = '1.0.0'
 
@@ -653,4 +661,5 @@ finally:
     except Exception:
         pass
     finally:
+        pass
         sys.exit()

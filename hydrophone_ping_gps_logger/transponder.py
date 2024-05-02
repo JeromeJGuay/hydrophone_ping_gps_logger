@@ -22,7 +22,7 @@ class TransponderController:
             self.is_connected = True
             pass
         else:
-            logging.warning("Could not connect transponder.")
+            logging.info("Could not connect transponder.")
             self.is_connected = False
 
     def disconnect(self):
