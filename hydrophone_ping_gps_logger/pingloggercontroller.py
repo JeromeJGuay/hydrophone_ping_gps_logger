@@ -72,6 +72,11 @@ class PingLoggerController:
         self.stop_ping_run()
         self.transponder_controller.disconnect()
 
+    def stop_all(self):
+        self.stop_ping_run()
+        self.disconnect_gps()
+        self.disconnect_transponder()
+
     def start_ping_run(self, run_parameters: PingRunParameters, bypass_gps=False):
 
         self.bypass_gps = bypass_gps
@@ -149,7 +154,6 @@ class PingLoggerController:
         self.ping_count = 0
         if self.ping_run_thread:
             self.ping_run_thread.join()
-
 
     def init_ping_file(self):
         timestamp = (

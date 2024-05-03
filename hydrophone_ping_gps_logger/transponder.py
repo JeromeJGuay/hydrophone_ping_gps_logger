@@ -90,15 +90,17 @@ class TransponderClient:
         return False
 
     def close_device(self):
-        if self.device.is_active():
-            if self.device.is_opened():
-                self.off_all()
-                self.device.close()
-                return True
+        if self.device is not None:
+            if self.device.is_active():
+                if self.device.is_opened():
+                    self.off_all()
+                    self.device.close()
+                    return True
+                else:
+                    logging.info("Device already closed")
             else:
-                logging.info("Device already closed")
-        else:
-            logging.info("Device is not active")
+                logging.info("Device is not active")
+            return True
         return True
 
     def refresh(self):

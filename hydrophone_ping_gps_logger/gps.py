@@ -115,10 +115,12 @@ class GpsController:
         logging.info(f"GPS sampling stopped")
         if self.run_thread:
             self.run_thread.join()  # Wait for the thread to exit
-        self.client.disconnect()
+
+        if self.is_connected:
+            self.client.disconnect()
+            self.is_connected = False
 
         self.nmea_data.clear()
-        self.is_connected = False
 
     def run(self):
         """

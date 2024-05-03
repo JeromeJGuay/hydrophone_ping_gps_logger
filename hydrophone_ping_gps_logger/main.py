@@ -89,6 +89,10 @@ VERSION = '1.0.0'
 SCALE = 1 * (1 + SCALE_FACTOR)
 
 
+APP_IS_RUNNING = True
+ping_controller = PingLoggerController()
+
+
 def main(page: ft.Page):
     ##### INIT PAGE ####
     page.title = "Ping GPS Logger"
@@ -99,10 +103,7 @@ def main(page: ft.Page):
 
     page.scroll = True
 
-
     ###### BackEnd ######
-    global ping_controller
-    ping_controller = PingLoggerController()
     ping_controller.transponder_controller.connect()
 
     ###### CONNECT GPS FIELD ######
@@ -623,7 +624,7 @@ def main(page: ft.Page):
         text_ping_count.value = str(int(ping_controller.ping_count))
         #page.update()
 
-    while True:
+    while APP_IS_RUNNING:
         refresh_gps_values()
 
         if ping_controller.is_running:
@@ -647,19 +648,19 @@ def main(page: ft.Page):
             icon_transponder_status.icon_color = ft.colors.GREEN_200
             button_connect_transponder.disabled = True
 
+
         page.update()
         time.sleep(0.05)
-
 
 
 try:
     ft.app(target=main)
 finally:
+    APP_IS_RUNNING = False
     logger.info("App Closed")
     try:
         ping_controller.transponder_controller.client.close_device()
     except Exception:
         pass
     finally:
-        pass
-        sys.exit()
+        ping_controller.stop_all()
